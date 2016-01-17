@@ -81,7 +81,7 @@ class Cholesky:
             eb2 = eb1 + s2
             u1 = eb1
             u2 = eb2
-            p_eff = min(p, m - sb1 + 1)
+            p_eff = min(p, m - sb1)
             log("sb1, sb2, eb1, eb2, u1, u2, p_eff = {0}, {1}, {2}, {3}, {4}, {5}, {6}".format(sb1, sb2, eb1, eb2, u1, u2, p_eff))
             XX2 = np.zeros((p_eff, m), complex)
             for j in range(0, p_eff):
@@ -142,13 +142,9 @@ class Cholesky:
             log("Y2_init = " + str(Y2))
             
             if (j > 0):
-                v[: j] = -beta*X2[j, :m].dot(Y2[:m, :j])
-                print v
-                Y1[j1, :j] = Y1[j1, :j] + v[:j]
-                print Y2[:m, : j ].shape
-                print np.array([X2[j, :m]]).T.shape
-                print v[:j].shape
-                Y2[:m, :j] = Y2[:m, : j ] + np.array([X2[j, :m]]).T.dot(v[:j])
+                v[: j - 1] = -beta*X2[j, :m].dot(Y2[:m, :j-1])
+                Y1[j1, :j - 1] = Y1[j1, :j - 1] + v[:j - 1]
+                Y2[:m, :j - 1] = Y2[:m, : j  - 1] + np.array([X2[j, :m]]).T.dot(v[:j - 1])
             log("")
             log("Y1_final = " + str(Y1))
             log("Y2_final = " + str(Y2))
