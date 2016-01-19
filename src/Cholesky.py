@@ -17,7 +17,7 @@ class Cholesky:
     def __init__(self, T):
         N = T.shape[0]
         self.L = np.zeros((N,N), complex)
-        self.T = T
+        self.T = np.array(T, complex)
 
     def fact(self, method, p):
         T = self.T
@@ -84,6 +84,7 @@ class Cholesky:
             p_eff = min(p, m - sb1)
             log("sb1, sb2, eb1, eb2, u1, u2, p_eff = {0}, {1}, {2}, {3}, {4}, {5}, {6}".format(sb1, sb2, eb1, eb2, u1, u2, p_eff))
             XX2 = np.zeros((p_eff, m), complex)
+            S = np.array([np.zeros((m,p)),np.zeros((m,p))], complex)
             for j in range(0, p_eff):
                 log("")
                 j1 = sb1 + j
@@ -92,7 +93,7 @@ class Cholesky:
                 X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, j2)
                 XX2[j] = X2
                 A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, j1, j2, m, n)
-                S = self.__aggregate(XX2, beta, A2, p, j, j1, j2, p_eff, method)
+                S = self.__aggregate(S, XX2, beta, A2, p, j, j1, j2, p_eff, method)
             A1, A2 = self.__block_update(XX2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method)
             return A1, A2
     def __block_update(self,X2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method):
@@ -129,12 +130,12 @@ class Cholesky:
         elif method == WY2:
             return wy2()
 
-    def __aggregate(self, X2, beta, A2, p, j, j1, j2, p_eff, method):
+    def __aggregate(self,S,  X2, beta, A2, p, j, j1, j2, p_eff, method):
         log("aggregate")
         
         def wy1():
-            Y1 = np.zeros((m,p), complex)
-            Y2 = np.zeros((m,p), complex)
+            Y1 = S[0] ## it might be Y1 += new Y1
+            Y2 = S[1]
             Y1[j1, j] = -beta
             Y2[:, j] =-beta*X2[j, :m]
 
@@ -142,9 +143,10 @@ class Cholesky:
             log("Y2_init = " + str(Y2))
             
             if (j > 0):
-                v[: j - 1] = -beta*X2[j, :m].dot(Y2[:m, :j-1])
-                Y1[j1, :j - 1] = Y1[j1, :j - 1] + v[:j - 1]
-                Y2[:m, :j - 1] = Y2[:m, : j  - 1] + np.array([X2[j, :m]]).T.dot(v[:j - 1])
+                v[: j ] = -beta*X2[j, :m].dot(Y2[:m, :j])
+                log("v = {}".format(v))
+                Y1[j1, :j] = Y1[j1, :j ] + v[:j ]
+                Y2[:m, :j ] = Y2[:m, : j] +X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
             log("")
             log("Y1_final = " + str(Y1))
             log("Y2_final = " + str(Y2))
@@ -165,7 +167,9 @@ class Cholesky:
             log("W1_final = " + str(W1))
             log("W2_final = " + str(W2))
             return W1, W2
-                
+        def yty1():
+            T = np.zeros((p, p), complex)
+            T[j,j] = -beta
                 
             
         m = A2.shape[1]
@@ -178,6 +182,8 @@ class Cholesky:
             return wy1()
         if method == WY2:
             return wy2()
+        if methid == YTY1:
+            return yty1()
 
     
     def __seq_reduc(self, A1, A2, s1, e1, s2, e2, m):
@@ -246,4 +252,3 @@ class Cholesky:
         log("\nA2 = {0}".format(A2))
         log("")
         return X2, beta, A1, A2
-import interface
