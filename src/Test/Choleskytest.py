@@ -1,7 +1,8 @@
 ##Written by Aladdin Seaifan (aladdin.seaifan@mail.utoronto.ca)
 ##This python file is to test the class CholeskyTest by using unittesting
-import os
-os.chdir("../")
+import os, sys
+
+sys.path.insert(0, "..")
 
 import unittest
 from Cholesky import *
@@ -94,32 +95,26 @@ class CholeskyTest(unittest.TestCase):
            L = c.fact("wy1", 1)
            self.LtoTTest(L, T)
 
-    def test_wy1_N20_m4_varying4(self):
+    def test_wy1_N20_m10_varyingp(self):
         N = 20
-        T = generateT(N, 4)
+        T = generateT(N, 5)
         for p in np.arange(1,10):
-           print p
            c = Cholesky(T)
            L = c.fact("wy1", p)
            self.LtoTTest(L, T)
 
 
-    
-
-
-
-    
-
     def LtoTTest(self, L, T):
-        M = L.dot(L.T)
+        M = L.dot(np.conj(L.T))
         m = T.shape[1]
         N = T.shape[0]
         self.assertEqual(M.shape, (N,N))
         T_new = M[:, :m]
-        self.assertTrue((np.abs(T - T_new) < 1e-13).all())
         
+        self.assertTrue((np.abs(T - T_new) < 1e-10).all())
         
-        
+
+    
         
 
 
