@@ -2,17 +2,33 @@ import numpy as np
 
 FORTRANFORMAT = "({}.d0, {}.d0)"
 
-def generateM(N):
+def generateA(N):
     A = np.abs(np.random.random_integers(1, 10, (N, N)))
+    return np.array(A, complex)
+
+def generateM(N):
+    A = generateA(N)
     M = A.dot(np.conj(A.T))
-    return np.array(M, complex)
+    return M
+
+def generateHermetianM(N):
+    A = generateA(N) + 1j*generateA(N)
+    M = A.dot(np.conj(A.T))
+    return M
 
 def createT(M, m):
+    if len(M) != len(M[0]):
+        raise Exception()
     return M[:, :m]
 
 
 def generateT(N, m):
     M = generateM(N)
+    T = createT(M, m)
+    return T
+
+def generateHermetianT(N, m):
+    M = generateHermetianM(N)
     T = createT(M, m)
     return T
 
