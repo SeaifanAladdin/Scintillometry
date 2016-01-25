@@ -5,21 +5,29 @@ from scipy import linalg
 debug = False
 
 
-SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
+
 
 
 def log(message):
     if debug:
         print str(message)
     
-
+SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class Cholesky:
+    
     def __init__(self, T):
         N = T.shape[0]
+        m = T.shape[1]
+        self.m = m
+        if N % m != 0:
+            raise Exception() ##TODO
         self.L = np.zeros((N,N), complex)
         self.T = np.array(T, complex)
 
     def fact(self, method, p):
+        if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
+            raise Exception()
+        
         T = self.T
         m = T.shape[1]
         n = T.shape[0]/m
@@ -55,12 +63,12 @@ class Cholesky:
         n = T.shape[0]/m
         A1 = np.zeros(T.shape, complex)
         A2 = np.zeros(T.shape, complex)
-        
         A1 = T.copy()
         
         c = linalg.cholesky(A1[:m,:m], lower=True)
-        A1[:m, :m] = c
-        A1[m:n*m,:] = A1[m:n*m,:].dot(linalg.inv(c[:m,:m].T))
+        A1[:m, :m] = c.copy()
+        c = np.conj(c.T) ## C --> C^(dagger)
+        A1[m:n*m,:] = A1[m:n*m,:].dot(linalg.inv(c))
         A2[m:n*m, :m] = 1j*A1[m:n*m, :m]
         return A1, A2
 
@@ -182,7 +190,6 @@ class Cholesky:
             
             if j > 0:
                 v[: j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
-                print v
                 W1[sb1:j1 - 1, j] = W1[sb1:j1 - 1, :j-1].dot(v[:j-1])
                 W2[:m, j]= W2[:m, j] + W2[:m, :j-1].dot(v[:j-1])
             log("")
@@ -262,7 +269,7 @@ class Cholesky:
         if np.all(np.abs(A2[j2, :]) < 1e-13):
             beta = 0
         else:
-            sigma = A2[j2, :].dot(A2[j2,:].T)
+            sigma = A2[j2, :].dot(np.conj(A2[j2,:].T))
             alpha = (A1[j1,j1]**2 + sigma)**0.5
             log("sigma = " + str(sigma))
             log("alpha = " + str(alpha))
@@ -275,7 +282,7 @@ class Cholesky:
             X2 = A2[j2,:]/z
             A2[j2, :] = A2[j2, :]/z
             
-            beta = 2*z**2/(sigma + z**2)
+            beta = 2*z*np.conj(z)/(sigma + np.conj(z)*z)
         log("beta = " + str(beta))
         log("X2 = {0}".format(X2))
         log("")
