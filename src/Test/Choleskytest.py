@@ -7,116 +7,179 @@ sys.path.insert(0, "..")
 import unittest
 from Cholesky import *
 import numpy as np
-from func import generateM, createT, generateT
+from func import *
 
-
-
-    
+SIGMA = 1e-10
 
 class CholeskyTest(unittest.TestCase):
-    ##Testing initializing
-    def test_initializingm1(self):
-        for i in range(1, 10):
-            self.initializeTest(i, 1)
-            self.initializeTest(i, 2)
+    def setUp(self):
+        pass
 
-    def test_initializingm2(self):
-        for i in range(2, 20, 2):
-            self.initializeTest(i, 2)
-            self.initializeTest(i, 2)
+    ## Initializing Test
+    ##TODO, Fail when T isn't a valid toeplitz matrix
+    ##TODO, Fails when T[:,m] isn't hermetian
 
-    def initializeTest(self, size, m):
-        def initializeTTest(): 
-            self.assertTrue((T == c.T).all())
-            self.assertEqual(c.T.shape, T.shape)
-
-        def initializeLTest():
-            N = T.shape[0]
-            L = np.zeros((N,N), complex)
-            self.assertTrue((L == c.L).all())
-            self.assertEqual(c.L.shape, L.shape)
-            
-        T = generateT(size, m)
-        c = Cholesky(T)
-        initializeTTest()
-        initializeLTest()
-    
-
-            
-    ##TODO: a test that would fail. I.E. shape = (N, m) where N % m != 0
-
-
-    ##SEQ Test
-    def test_seqm1N1(self):
-        T = generateT(1,1)
-        c = Cholesky(T)
-        L = c.fact("seq", -1)
-        self.LtoTTest(L, T)
-
-
-    def test_seqm1varyingN(self):
-        for N in range(1, 10):
-            T = generateT(N, 1)
-            c = Cholesky(T)
-            L = c.fact("seq", -1)
-            self.LtoTTest(L, T)
-    def test_seqN20varyingm(self):
-        N = 20
-        M = generateT(N, N)
-        for m in np.arange(1, N + 1):
-           if N%m != 0: continue
-           T = M[:, :m]
-           c = Cholesky(T)
-           L = c.fact("seq", -1)
-           self.LtoTTest(L, T)
-
-    ##WY1 Test
-    def test_wy1_m1_N1_p1(self):
-        T = generateT(1,1)
-        c = Cholesky(T)
-        L = c.fact("wy1", 1)
-        self.LtoTTest(L, T)
-
-
-    def test_wy1_m1_p1_varyingN(self):
-        for N in range(1, 10):
-            T = generateT(N, 1)
-            c = Cholesky(T)
-            L = c.fact("wy1", 1)
-            self.LtoTTest(L, T)
-            
-    def test_wy1_N20_p1_varyingm(self):
-        N = 20
-        M = generateT(N, N)
-        for m in np.arange(1, N + 1):
-           if N%m != 0: continue
-           T = M[:, :m]
-           c = Cholesky(T)
-           L = c.fact("wy1", 1)
-           self.LtoTTest(L, T)
-
-    def test_wy1_N20_m10_varyingp(self):
-        N = 20
-        T = generateT(N, 5)
-        for p in np.arange(1,10):
-           c = Cholesky(T)
-           L = c.fact("wy1", p)
-           self.LtoTTest(L, T)
-
-
-    def LtoTTest(self, L, T):
-        M = L.dot(np.conj(L.T))
-        m = T.shape[1]
-        N = T.shape[0]
-        self.assertEqual(M.shape, (N,N))
-        T_new = M[:, :m]
+    ## Seq Test
+    def test_seq_real_size1(self):
         
-        self.assertTrue((np.abs(T - T_new) < 1e-10).all())
-        
+        c = self.__setupC(1,1, True)
+        self.__methodSuccessfulTest("seq", c, -1)
 
-    
+    def test_seq_real_N20m4(self):
+        c = self.__setupC(20,4, True)
+        self.__methodSuccessfulTest("seq", c, -1)
+
+    def test_seq_real_N20m20(self):
+        c = self.__setupC(20,20, True)
+        self.__methodSuccessfulTest("seq", c, -1)
+
+    def test_seq_complex_size1(self):
         
+        c = self.__setupC(1,1, False)
+        self.__methodSuccessfulTest("seq", c, -1)
+
+    def test_seq_complex_N20m4(self):
+        c = self.__setupC(20,4, False)
+        self.__methodSuccessfulTest("seq", c, -1)
+
+    def test_seq_complex_N20m20(self):
+        c = self.__setupC(20,20, False)
+        self.__methodSuccessfulTest("seq", c, -1)
+
+
+    ## wy1 Test
+    def test_wy1_real_size1(self):
+        
+        c = self.__setupC(1,1, True)
+        self.__methodSuccessfulTest("wy1", c, 1)
+
+    def test_wy1_real_N20m4(self):
+        c = self.__setupC(20,4, True)
+        self.__methodSuccessfulTest("wy1", c, 2)
+
+    def test_wy1_real_N20m20(self):
+        c = self.__setupC(20,20, True)
+        self.__methodSuccessfulTest("wy1", c, 5)
+
+    def test_wy1_complex_size1(self):
+        
+        c = self.__setupC(1,1, False)
+        self.__methodSuccessfulTest("wy1", c, 1)
+
+    def test_wy1_complex_N20m4p2(self):
+        c = self.__setupC(20,4, False)
+        self.__methodSuccessfulTest("wy1", c, 2)
+
+    def test_wy1_complex_N20m20p5(self):
+        c = self.__setupC(20,20, False)
+        self.__methodSuccessfulTest("wy1", c, 5)
+
+
+
+    ## wy2 Test
+    def test_wy2_real_size1(self):
+        
+        c = self.__setupC(1,1, True)
+        self.__methodSuccessfulTest("wy2", c, 1)
+
+    def test_wy2_real_N20m4(self):
+        c = self.__setupC(20,4, True)
+        self.__methodSuccessfulTest("wy2", c, 2)
+
+    def test_wy2_real_N20m20(self):
+        c = self.__setupC(20,20, True)
+        self.__methodSuccessfulTest("wy2", c, 5)
+
+    def test_wy2_complex_size1(self):
+        
+        c = self.__setupC(1,1, False)
+        self.__methodSuccessfulTest("wy2", c, 1)
+
+    def test_wy2_complex_N20m4p2(self):
+        c = self.__setupC(20,4, False)
+        self.__methodSuccessfulTest("wy2", c, 2)
+
+    def test_wy2_complex_N20m20p5(self):
+        c = self.__setupC(20,20, False)
+        self.__methodSuccessfulTest("wy2", c, 5)
+
+
+## yty1 Test
+    def test_yty1_real_size1(self):
+        
+        c = self.__setupC(1,1, True)
+        self.__methodSuccessfulTest("yty1", c, 1)
+
+    def test_yty1_real_N20m4(self):
+        c = self.__setupC(20,4, True)
+        self.__methodSuccessfulTest("yty1", c, 2)
+
+    def test_yty1_real_N20m20(self):
+        c = self.__setupC(20,20, True)
+        self.__methodSuccessfulTest("yty1", c, 5)
+
+    def test_yty1_complex_size1(self):
+        
+        c = self.__setupC(1,1, False)
+        self.__methodSuccessfulTest("yty1", c, 1)
+
+    def test_yty1_complex_N20m4p2(self):
+        c = self.__setupC(20,4, False)
+        self.__methodSuccessfulTest("yty1", c, 2)
+
+    def test_yty1_complex_N20m20p5(self):
+        c = self.__setupC(20,20, False)
+        self.__methodSuccessfulTest("yty1", c, 5)
+
+
+
+## yty2 Test
+    def test_yty2_real_size1(self):
+        
+        c = self.__setupC(1,1, True)
+        self.__methodSuccessfulTest("yty2", c, 1)
+
+    def test_yty2_real_N20m4(self):
+        c = self.__setupC(20,4, True)
+        self.__methodSuccessfulTest("yty2", c, 2)
+
+    def test_yty2_real_N20m20(self):
+        c = self.__setupC(20,20, True)
+        self.__methodSuccessfulTest("yty2", c, 5)
+
+    def test_yty2_complex_size1(self):
+        
+        c = self.__setupC(1,1, False)
+        self.__methodSuccessfulTest("yty2", c, 1)
+
+    def test_yty2_complex_N20m4p2(self):
+        c = self.__setupC(20,4, False)
+        self.__methodSuccessfulTest("yty2", c, 2)
+
+    def test_yty2_complex_N20m20p5(self):
+        c = self.__setupC(20,20, False)
+        self.__methodSuccessfulTest("yty2", c, 5)
+
+
+
+    def __setupC(self, N, m, real = False):
+        func = generateHermetianT
+        if real:
+            func = generateT
+        return Cholesky(func(N,m))
+    def __methodSuccessfulTest(self, method, c, p):
+        L = c.fact(method, p)
+        T = L.dot(np.conj(L.T))[:, :c.m]
+        self.assertTrue(np.all(np.abs(T - c.T) <= SIGMA))
+
+   ##TODO: Failed tests - when m > N, when there is not a valid method, when p < 1
+     
+
+    def tearDown(self):
+        pass
+
+
 
 
 if __name__ == '__main__':
-    unittest.main()    
+    unittest.main()
