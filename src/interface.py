@@ -1,20 +1,25 @@
 import Cholesky as chol
 import numpy as np
 from func import *
+from sympy import *
 
 np.random.seed(10)
 N = int(raw_input('Choose the size of your matrix:\n'))
 m = int(raw_input('Choose the size of your block:\n'))
 T = generateHermetianT(N, m)
+c = chol.Cholesky(T)
+
+print "Your generated Toeplitz Matrix:"
+pprint(Matrix(T))
+print 
+
+
+
 method = raw_input('Choose a method among: seq wy1 wy2 yty1 yty2\n')
 
-p = -1
-if method != chol.SEQ:
-    p = int(raw_input('Choose your p-factor:\n'))
-##method = "seq"
+p = int(raw_input('Choose your p-factor (Not neccesary for seq):\n'))
 
+L =  c.fact(method, p)
 
-
-c = chol.Cholesky(T)
-L =  c.fact(method, 2)
-
+print "The cholesky decomposition of the generated Toeplitz Matrix:"
+pprint(Matrix(np.around(L,2)))
