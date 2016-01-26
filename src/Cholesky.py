@@ -3,10 +3,11 @@
 import numpy as np
 from scipy import linalg
 
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0, currentdir + "/Exceptions")
 
-import os, sys
 
-sys.path.insert(0, "Exceptions")
 from CholeskyExceptions import *
 
 
@@ -35,7 +36,7 @@ class Cholesky:
     def fact(self, method, p):
         if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
             raise InvalidMethodException(method)
-        if p < 1:
+        if p < 1 and method != SEQ:
             raise InvalidPException(p)
         
         T = self.T

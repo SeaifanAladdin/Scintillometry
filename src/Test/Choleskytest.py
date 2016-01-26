@@ -1,8 +1,11 @@
 ##Written by Aladdin Seaifan (aladdin.seaifan@mail.utoronto.ca)
 ##This python file is to test the class CholeskyTest by using unittesting
-import os, sys
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+sys.path.insert(0, parentdir + "/Exceptions")
 
-sys.path.insert(0, "..")
 
 import unittest
 from Cholesky import *
