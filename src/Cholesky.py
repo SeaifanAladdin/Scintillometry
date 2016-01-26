@@ -2,6 +2,14 @@
 
 import numpy as np
 from scipy import linalg
+
+
+import os, sys
+
+sys.path.insert(0, "Exceptions")
+from CholeskyExceptions import *
+
+
 debug = False
 
 
@@ -20,13 +28,15 @@ class Cholesky:
         m = T.shape[1]
         self.m = m
         if N % m != 0:
-            raise Exception() ##TODO
+            raise InvalidToeplitzBlockSize(N, m) 
         self.L = np.zeros((N,N), complex)
         self.T = np.array(T, complex)
 
     def fact(self, method, p):
         if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
-            raise Exception()
+            raise InvalidMethodException(method)
+        if p < 1:
+            raise InvalidPException(p)
         
         T = self.T
         m = T.shape[1]
