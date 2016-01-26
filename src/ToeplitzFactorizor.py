@@ -8,7 +8,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.insert(0, currentdir + "/Exceptions")
 
 
-from CholeskyExceptions import *
+from ToeplitzFactorizorExceptions import *
 
 
 debug = False
