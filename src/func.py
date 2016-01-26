@@ -1,6 +1,7 @@
 import numpy as np
 
 FORTRANFORMAT = "({}.d0, {}.d0)"
+SIGMA = 1e-10
 
 def generateA(N):
     A = np.abs(np.random.random_integers(1, 10, (N, N)))
@@ -33,6 +34,12 @@ def generateHermetianT(N, m):
     return T
 
 
+def testFactorization(T, L):
+    m = T.shape[1]
+    T_new = L.dot(np.conj(L.T))[:, :m]
+    return np.all(np.abs(T - T_new) <= SIGMA)
+
+
 def createTforFortran(T):
     m = T.shape[1]
     n = T.shape[0]/m
@@ -45,4 +52,6 @@ def createTforFortran(T):
                 s+=FORTRANFORMAT.format(np.array(np.real(T[k][i]), int), np.array(np.imag(T[k][i]), int))
             
     return s
+
+
 

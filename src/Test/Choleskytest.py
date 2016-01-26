@@ -12,8 +12,6 @@ from Cholesky import *
 import numpy as np
 from func import *
 
-SIGMA = 1e-10
-
 class CholeskyTest(unittest.TestCase):
     def setUp(self):
         pass
@@ -173,7 +171,7 @@ class CholeskyTest(unittest.TestCase):
     def __methodSuccessfulTest(self, method, c, p):
         L = c.fact(method, p)
         T = L.dot(np.conj(L.T))[:, :c.m]
-        self.assertTrue(np.all(np.abs(T - c.T) <= SIGMA))
+        self.assertTrue(testFactorization(T, L))
 
    ##TODO: Failed tests - when m > N, when there is not a valid method, when p < 1
      
