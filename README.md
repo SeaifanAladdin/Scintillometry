@@ -1,16 +1,17 @@
 # Scintillometry
 
-#Synopsis
+##Synopsis
 The purpose of this project is to decompose a toeplitz matrix using Schur's algoritm. Because this project will run on SciNet, a supercomputer, the program will need to have multi-threading and multi-core capabilities. 
 
-#Example
+##Example
+```
 $ python src/interface.py
 Choose the size of your matrix:
 4
 Choose the size of your block:
 2
 Your generated Toeplitz Matrix:
-⎡       345.0          249.0 + 86.0⋅ⅈ⎤
+⎡       345.0          249.0 + 86.0⋅ⅈ⎤ 
 ⎢                                    ⎥
 ⎢249.0 - -86.0⋅(-1)⋅ⅈ      280.0     ⎥
 ⎢                                    ⎥
@@ -30,6 +31,6 @@ The cholesky decomposition of the generated Toeplitz Matrix:
 ⎢15.56 - -3.01⋅(-1)⋅ⅈ  9.74 - -2.44⋅(-1)⋅ⅈ     -26.4        0   ⎥
 ⎢                                                               ⎥
 ⎣   12.6 + 0.65⋅ⅈ         7.22 + 3.15⋅ⅈ     1.02 + 2.7⋅ⅈ  -15.04⎦
-
-#Motivation
+```
+##Motivation
 When radio waves from puslars passes through the ISM, Interstellar Medium, a scintillating speckle pattern is created. To understand the properties of the ISM, and to do further research on pulsars, we require the phase and magnitude of the observed scintillation pattern. The purpose of this project is to obtain both the phase and magnitude by being able to factorize a toeplitz matrix using Schur's algorithm. 
