@@ -38,7 +38,7 @@ When radio waves from puslars passes through the ISM, Interstellar Medium, a sci
 ##Tests
 In the src/Tests folder are the unittest code which tests the software. The python file ToeplitzFactorizorTest.py contains 30 tests, which includes testing different methods, sizes, and block sizes.
 ```
-$ python src/Test/ToeplitzFactorizortest.py 
+$ python src/Test/ToeplitzFactorizorTest.py 
 ..............................
 ----------------------------------------------------------------------
 Ran 30 tests in 1.469s
