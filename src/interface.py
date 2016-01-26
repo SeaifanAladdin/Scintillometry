@@ -5,14 +5,21 @@ from sympy import *
 
 np.random.seed(10)
 N = int(raw_input('Choose the size of your matrix:\n'))
+M = generateHermetianM(N)
+##print "Your Matrix is: "
+##print((M))
+##print
 m = int(raw_input('Choose the size of your block:\n'))
-T = generateHermetianT(N, m)
+T = createT(M, m)
 c = ToeplitzFactorizor(T)
 
-print "Your generated Toeplitz Matrix:"
+print "Your randomly generated toeplitz matrix consists of {0} {1}x{1} blocks".format(m, N/m)
+print "Those blocks are..."
+printBlocks(T)
+print
+print "Therefore, your toeplitz matrix is:"
 pprint(Matrix(T))
-print 
-
+print
 
 
 method = raw_input('Choose a method among: seq wy1 wy2 yty1 yty2\n')
@@ -22,4 +29,4 @@ p = int(raw_input('Choose your p-factor (Not neccesary for seq):\n'))
 L =  c.fact(method, p)
 
 print "The cholesky decomposition of the generated Toeplitz Matrix:"
-pprint(Matrix(np.around(L,2)))
+pprint(Matrix(np.around(L, 2)))

@@ -10,8 +10,19 @@ Choose the size of your matrix:
 4
 Choose the size of your block:
 2
-Your generated Toeplitz Matrix:
-⎡       345.0          249.0 + 86.0⋅ⅈ⎤ 
+Your randomly generated toeplitz matrix consists of 2 2x2 blocks
+Those blocks are...
+Block 1
+⎡       345.0          249.0 + 86.0⋅ⅈ⎤
+⎢                                    ⎥
+⎣249.0 - -86.0⋅(-1)⋅ⅈ      280.0     ⎦
+Block 2
+⎡289.0 - -56.0⋅(-1)⋅ⅈ  309.0 + 10.0⋅ⅈ⎤
+⎢                                    ⎥
+⎣   234.0 + 12.0⋅ⅈ     230.0 + 95.0⋅ⅈ⎦
+
+Therefore, your toeplitz matrix is:
+⎡       345.0          249.0 + 86.0⋅ⅈ⎤
 ⎢                                    ⎥
 ⎢249.0 - -86.0⋅(-1)⋅ⅈ      280.0     ⎥
 ⎢                                    ⎥
@@ -20,7 +31,7 @@ Your generated Toeplitz Matrix:
 ⎣   234.0 + 12.0⋅ⅈ     230.0 + 95.0⋅ⅈ⎦
 
 Choose a method among: seq wy1 wy2 yty1 yty2
-wy1
+wy2
 Choose your p-factor (Not neccesary for seq):
 2
 The cholesky decomposition of the generated Toeplitz Matrix:

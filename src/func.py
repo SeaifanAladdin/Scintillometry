@@ -1,4 +1,5 @@
 import numpy as np
+from sympy import *
 
 FORTRANFORMAT = "({}.d0, {}.d0)"
 SIGMA = 1e-10
@@ -54,4 +55,11 @@ def createTforFortran(T):
     return s
 
 
+def printBlocks(T):
+    m = T.shape[1]
+    n = T.shape[0]/m
+    
+    for i in range(n):
+        print "Block {}".format(i + 1)
+        pprint(Matrix(T[i*m:(i + 1)*m, :]))
 
