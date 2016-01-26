@@ -1,4 +1,4 @@
-import Cholesky as chol
+from Cholesky import *
 import numpy as np
 from func import *
 from sympy import *
@@ -7,7 +7,7 @@ np.random.seed(10)
 N = int(raw_input('Choose the size of your matrix:\n'))
 m = int(raw_input('Choose the size of your block:\n'))
 T = generateHermetianT(N, m)
-c = chol.Cholesky(T)
+c = Cholesky(T)
 
 print "Your generated Toeplitz Matrix:"
 pprint(Matrix(T))
