@@ -1,7 +1,7 @@
 ##Give Credits Later
 
 import numpy as np
-from scipy import linalg
+from scipy.linalg import inv, cholesky, triu
 
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -76,10 +76,10 @@ class ToeplitzFactorizor:
         A2 = np.zeros(T.shape, complex)
         A1 = T.copy()
         
-        c = linalg.cholesky(A1[:m,:m], lower=True)
+        c = cholesky(A1[:m,:m], lower=True)
         A1[:m, :m] = c.copy()
         c = np.conj(c.T) ## C --> C^(dagger)
-        A1[m:n*m,:] = A1[m:n*m,:].dot(linalg.inv(c))
+        A1[m:n*m,:] = A1[m:n*m,:].dot(inv(c))
         A2[m:n*m, :m] = 1j*A1[m:n*m, :m]
         return A1, A2
 
@@ -150,7 +150,7 @@ class ToeplitzFactorizor:
         def yty2():
             invT = S
             M = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
-            M = M.dot(linalg.inv(invT[:p_eff, :p_eff]))
+            M = M.dot(inv(invT[:p_eff, :p_eff]))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M
             A2[u2:e2, :m] = A2[u2:e2, :m] + M.dot(X2[:p_eff, :m])
             return A1, A2
@@ -215,7 +215,7 @@ class ToeplitzFactorizor:
             return T
         def yty2():
             invT = S
-            invT[:p_eff, :p_eff] = -linalg.triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
+            invT[:p_eff, :p_eff] = -triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
             invT[j,j] = (invT[j,j] - 1)/2.
             return invT
             
