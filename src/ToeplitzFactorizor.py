@@ -1,7 +1,8 @@
 ##Give Credits Later
 
 import numpy as np
-from scipy.linalg import inv, cholesky, triu
+from numpy import triu
+from numpy.linalg import inv, cholesky
 
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -76,7 +77,7 @@ class ToeplitzFactorizor:
         A2 = np.zeros(T.shape, complex)
         A1 = T.copy()
         
-        c = cholesky(A1[:m,:m], lower=True)
+        c = cholesky(A1[:m,:m])
         A1[:m, :m] = c.copy()
         c = np.conj(c.T) ## C --> C^(dagger)
         A1[m:n*m,:] = A1[m:n*m,:].dot(inv(c))
