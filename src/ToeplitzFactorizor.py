@@ -13,7 +13,7 @@ from ToeplitzFactorizorExceptions import *
 
 debug = False
 
-
+from scipy import linalg
 
 
 def log(message):
@@ -145,18 +145,25 @@ class ToeplitzFactorizor:
             return A1, A2
         def yty1():
             T = S
-            M = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
-            M = M.dot(T[:p_eff, :p_eff])
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M
+            log("old M = {}".format(M))
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
+            M[:nru,:p_eff] = M[:nru,:p_eff].dot(T[:p_eff, :p_eff])
+            log("M = {}".format(M))
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru, :p_eff].dot(X2[:p_eff, :m])
+            log("M = {}".format(M))
+            log("A1 = {}\n A2 = {}".format(A1, A2))
+            
             return A1, A2
 
         def yty2():
             invT = S
-            M = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
-            M = M.dot(inv(invT[:p_eff, :p_eff]))
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M.dot(X2[:p_eff, :m])
+            log("old M = {}".format(M))
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
+            M[:nru,:p_eff] = M[:nru,:p_eff].dot(inv(invT[:p_eff, :p_eff]))
+            log("M = {}".format(M))
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
+            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
             return A1, A2
         log("")
         log("Block_update")
@@ -213,14 +220,21 @@ class ToeplitzFactorizor:
             return W1, W2
         def yty1():
             T = S
+            T[j,j] = -beta
             if j > 0:
                 v[:j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
                 T[:j, j]=T[:j, :j].dot(v[:j])
+            log("T = " + str(T))
             return T
         def yty2():
             invT = S
-            invT[:p_eff, :p_eff] = -triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
-            invT[j,j] = (invT[j,j] - 1)/2.
+            log("old invT = " + str(invT))
+            if j == p_eff - 1:
+                invT[:p_eff, :p_eff] = -triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
+                log("invT = " + str(invT))
+                for jj in range(p_eff):
+                    invT[jj,jj] = (invT[jj,jj] - 1.)/2.
+            log("invT = {}".format(invT))
             return invT
             
         m = A2.shape[1]
