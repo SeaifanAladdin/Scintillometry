@@ -4,13 +4,12 @@ from func import *
 
 np.random.seed(10)
 N = int(raw_input('Choose the size of your matrix:\n'))
-M = generateHermetianM(N)
+T = createToeplitz(N)
 ##print "Your Matrix is: "
 ##print((M))
 ##print
 m = int(raw_input('Choose the size of your block:\n'))
-T = createT(M, m)
-c = ToeplitzFactorizor(T)
+c = ToeplitzFactorizor(T, m)
 
 print "Your randomly generated toeplitz matrix consists of {0} {1}x{1} blocks".format(m, N/m)
 print "Those blocks are..."

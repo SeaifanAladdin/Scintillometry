@@ -3,7 +3,6 @@
 import numpy as np
 from numpy import triu
 from numpy.linalg import inv, cholesky
-
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir + "/Exceptions")
@@ -17,7 +16,6 @@ debug = False
 
 
 
-
 def log(message):
     if debug:
         print str(message)
@@ -25,9 +23,8 @@ def log(message):
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
-    def __init__(self, T):
+    def __init__(self, T, m):
         N = T.shape[0]
-        m = T.shape[1]
         self.m = m
         if N % m != 0:
             raise InvalidToeplitzBlockSize(N, m) 
@@ -40,8 +37,8 @@ class ToeplitzFactorizor:
         if p < 1 and method != SEQ:
             raise InvalidPException(p)
         
-        T = self.T
-        m = T.shape[1]
+        T = self.T[:, :self.m]
+        m = self.m
         n = T.shape[0]/m
         A1, A2 = self.__setup_gen(T, m)
 
@@ -94,6 +91,7 @@ class ToeplitzFactorizor:
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
         log("method = " + method)
         n = A1.shape[0]/m
+        M = np.zeros((m*n,m*n), dtype=complex)
         for sb1 in range (0, m, p):
             log("")
             sb2 = sb1 + s2
@@ -117,25 +115,30 @@ class ToeplitzFactorizor:
                 XX2[j] = X2
                 A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, j1, j2, m, n)
                 S = self.__aggregate(S, XX2, beta, A2, p, j, j1, j2, p_eff, method)
-            A1, A2 = self.__block_update(XX2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method)
-            return A1, A2
-    def __block_update(self,X2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method):
+            A1, A2 = self.__block_update(M, XX2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method)
+        return A1, A2
+    def __block_update(self,M, X2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method):
         def wy1():
             Y1, Y2 = S
-            M = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
+            if nru == 0 or p_eff == 0: return A1, A2
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
             log("M = " + str(M))
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M.dot(Y2[:m, :p_eff].T)
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M.dot(Y1.T[sb1:eb1, :p_eff])
+            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(Y2[:m, :p_eff].T)
+            M[:nru,:p_eff] =  M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]            
             log("")
             log("Final A1 = " + str(A1))
             log("Final A2 = " + str(A2))
             return A1, A2
         def wy2():
             W1, W2 = S
-            M = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) + A2[u2:e2, :m].dot(W2[:m, :p_eff])
+            log("old M = " + str(M))
+            if nru == 0 or p_eff == 0: return A1, A2
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) + A2[u2:e2, :m].dot(W2[:m, :p_eff])
             log("M = " + str(M))
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M.dot(X2[:p_eff, :m])
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
+            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
+            log("M = " + str(M))
             log("")
             log("Final A1 = " + str(A1))
             log("Final A2 = " + str(A2))
@@ -202,8 +205,8 @@ class ToeplitzFactorizor:
             
             if j > 0:
                 v[: j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
-                W1[sb1:j1 - 1, j] = W1[sb1:j1 - 1, :j-1].dot(v[:j-1])
-                W2[:m, j]= W2[:m, j] + W2[:m, :j-1].dot(v[:j-1])
+                W1[sb1:j1, j] = W1[sb1:j1, :j].dot(v[:j])
+                W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(v[:j])
             log("")
             log("W1_final = " + str(W1))
             log("W2_final = " + str(W2))
@@ -281,7 +284,7 @@ class ToeplitzFactorizor:
         if np.all(np.abs(A2[j2, :]) < 1e-13):
             beta = 0
         else:
-            sigma = A2[j2, :].dot(np.conj(A2[j2,:].T))
+            sigma = A2[j2, :].dot(A2[j2,:].T)
             alpha = (A1[j1,j1]**2 + sigma)**0.5
             log("sigma = " + str(sigma))
             log("alpha = " + str(alpha))

@@ -1,42 +1,34 @@
 import numpy as np
+from scipy import linalg
 
 FORTRANFORMAT = "({}.d0, {}.d0)"
 SIGMA = 1e-10
 
-def generateA(N):
-    A = np.abs(np.random.random_integers(1, 10, (N, N)))
-    return np.array(A, complex)
-
-def generateM(N):
-    A = generateA(N)
-    M = A.dot(np.conj(A.T))
-    return M
-
-def generateHermetianM(N):
-    A = generateA(N) + 1j*generateA(N)
-    M = A.dot(np.conj(A.T))
-    return M
-
-def createT(M, m):
-    if len(M) != len(M[0]):
-        raise Exception()
-    return M[:, :m]
 
 
-def generateT(N, m):
-    M = generateM(N)
-    T = createT(M, m)
+def toBlockedT(T, m):
+    return T[:, :m]
+
+def createToeplitz(N, real=False):
+    x = np.random.random_integers(1, 10, N)
+    x = np.array(x, dtype=complex)
+    if not real:
+        xj = np.random.random_integers(1, 10, N)
+        x += 1j*xj
+    x0 = np.sum(np.absolute(x))
+    x[0] = x0
+    T = linalg.toeplitz(x)
     return T
 
-def generateHermetianT(N, m):
-    M = generateHermetianM(N)
-    T = createT(M, m)
-    return T
+
+def generateBlockedT(N, m):
+    T = createToeplitz(N)
+    return toBlockedT(T, m)
+
 
 
 def testFactorization(T, L):
-    m = T.shape[1]
-    T_new = L.dot(np.conj(L.T))[:, :m]
+    T_new = L.dot(np.conj(L.T))
     return np.all(np.abs(T - T_new) <= SIGMA)
 
 
@@ -54,7 +46,9 @@ def createTforFortran(T):
     return s
 
 
+
 def printBlocks(T):
+    return
     m = T.shape[1]
     n = T.shape[0]/m
     

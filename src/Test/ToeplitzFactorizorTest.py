@@ -164,13 +164,11 @@ class ToeplitzFactorizorTest(unittest.TestCase):
 
 
     def __setupC(self, N, m, real = False):
-        func = generateHermetianT
-        if real:
-            func = generateT
-        return ToeplitzFactorizor(func(N,m))
+        func = createToeplitz
+        return ToeplitzFactorizor(func(N, real), m)
     def __methodSuccessfulTest(self, method, c, p):
         L = c.fact(method, p)
-        T = L.dot(np.conj(L.T))[:, :c.m]
+        T = c.T
         self.assertTrue(testFactorization(T, L))
 
    ##TODO: Failed tests - when m > N, when there is not a valid method, when p < 1
