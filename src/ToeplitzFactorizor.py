@@ -135,7 +135,7 @@ class ToeplitzFactorizor:
             W1, W2 = S
             #log("old M = " + str(M))
             if nru == 0 or p_eff == 0: return A1, A2
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) + A2[u2:e2, :m].dot(W2[:m, :p_eff])
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) - A2[u2:e2, :m].dot(np.conj(W2)[:m, :p_eff])
             #log("M = " + str(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
@@ -211,9 +211,9 @@ class ToeplitzFactorizor:
             #log("W2_init = " + str(W2))
             
             if j > 0:
-                v[: j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
+                v[: j] = beta*X2[:j, :m].dot(np.conj(X2[j, :m].T))
                 W1[sb1:j1, j] = W1[sb1:j1, :j].dot(v[:j])
-                W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(v[:j])
+                W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(np.conj(v)[:j])
             #log("")
             #log("W1_final = " + str(W1))
             #log("W2_final = " + str(W2))
