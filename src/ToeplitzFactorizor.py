@@ -160,7 +160,7 @@ class ToeplitzFactorizor:
         def yty2():
             invT = S
             #log("old M = {}".format(M))
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
             M[:nru,:p_eff] = M[:nru,:p_eff].dot(inv(invT[:p_eff, :p_eff]))
             #log("M = {}".format(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
@@ -230,7 +230,7 @@ class ToeplitzFactorizor:
             invT = S
             #log("old invT = " + str(invT))
             if j == p_eff - 1:
-                invT[:p_eff, :p_eff] = -triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
+                invT[:p_eff, :p_eff] = triu(X2[:p_eff, :m].dot(np.conj(X2)[:p_eff, :m].T))
                 #log("invT = " + str(invT))
                 for jj in range(p_eff):
                     invT[jj,jj] = (invT[jj,jj] - 1.)/2.
