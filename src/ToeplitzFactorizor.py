@@ -42,28 +42,29 @@ class ToeplitzFactorizor:
         n = T.shape[0]/m
         A1, A2 = self.__setup_gen(T, m)
 
-        log(A1)
-        log("")
-        log(A2)
+        #log(A1)
+        #log("")
+        #log(A2)
         self.L[:, :m] = A1
-        log("")
-        log("")
-        log(self.L)
+        #log("")
+        #log("")
+        #log(self.L)
 
         for k in range(1,n):
-            log("")
-            log("k = " + str(k))
+            #log("")
+            #log("k = " + str(k))
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
             s1, e1, s2, e2 = self.__set_curr_gen(k, n, m)
-            log("s1, e1, s2, e2 = {0}, {1}, {2}, {3}".format(s1,e1,s2,e2))
-            log("")
-            log("")
+            #log("s1, e1, s2, e2 = {0}, {1}, {2}, {3}".format(s1,e1,s2,e2))
+            #log("")
+            #log("")
             if method==SEQ:
                 A1, A2 = self.__seq_reduc(A1, A2, s1, e1, s2, e2, m)
             else:
                 A1, A2 = self.__block_reduc(A1, A2, s1, e1, s2, e2, m, p, method)
+            
             self.L[k*m:e2, k*m:(k + 1)*m]  = A1[:e1, :]
-            log("new L at step k = \n{0}".format(self.L))
+            #log("new L at step k = \n{0}".format(self.L))
         return self.L
 
     ##Private Methods
@@ -89,28 +90,28 @@ class ToeplitzFactorizor:
         return s1, e1, s2, e2
 
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
-        log("method = " + method)
+        #log("method = " + method)
         n = A1.shape[0]/m
         M = np.zeros((m*n,m*n), dtype=complex)
         for sb1 in range (0, m, p):
-            log("")
+            #log("")
             sb2 = sb1 + s2
             eb1 = min(sb1 + p, m)
             eb2 = eb1 + s2
             u1 = eb1
             u2 = eb2
             p_eff = min(p, m - sb1)
-            log("sb1, sb2, eb1, eb2, u1, u2, p_eff = {0}, {1}, {2}, {3}, {4}, {5}, {6}".format(sb1, sb2, eb1, eb2, u1, u2, p_eff))
+            #log("sb1, sb2, eb1, eb2, u1, u2, p_eff = {0}, {1}, {2}, {3}, {4}, {5}, {6}".format(sb1, sb2, eb1, eb2, u1, u2, p_eff))
             XX2 = np.zeros((p_eff, m), complex)
             if method == WY1 or method == WY2:
                 S = np.array([np.zeros((m,p)),np.zeros((m,p))], complex)
             elif method == YTY1 or YTY2:
                 S = np.zeros((p, p), complex)
             for j in range(0, p_eff):
-                log("")
+                #log("")
                 j1 = sb1 + j
                 j2 = sb2 + j 
-                log("j, j1, j2 = {0}, {1}, {2}".format(j, j1, j2))
+                #log("j, j1, j2 = {0}, {1}, {2}".format(j, j1, j2))
                 X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, j2)
                 XX2[j] = X2
                 A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, j1, j2, m, n)
@@ -121,57 +122,57 @@ class ToeplitzFactorizor:
         def wy1():
             Y1, Y2 = S
             if nru == 0 or p_eff == 0: return A1, A2
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
-            log("M = " + str(M))
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
+            #log("M = " + str(M))
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(Y2[:m, :p_eff].T)
             M[:nru,:p_eff] =  M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]            
-            log("")
-            log("Final A1 = " + str(A1))
-            log("Final A2 = " + str(A2))
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
+            #log("")
+            #log("Final A1 = " + str(A1))
+            #log("Final A2 = " + str(A2))
             return A1, A2
         def wy2():
             W1, W2 = S
-            log("old M = " + str(M))
+            #log("old M = " + str(M))
             if nru == 0 or p_eff == 0: return A1, A2
             M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) + A2[u2:e2, :m].dot(W2[:m, :p_eff])
-            log("M = " + str(M))
+            #log("M = " + str(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
-            log("M = " + str(M))
-            log("")
-            log("Final A1 = " + str(A1))
-            log("Final A2 = " + str(A2))
+            #log("M = " + str(M))
+            #log("")
+            #log("Final A1 = " + str(A1))
+            #log("Final A2 = " + str(A2))
             return A1, A2
         def yty1():
             T = S
-            log("old M = {}".format(M))
+            #log("old M = {}".format(M))
             M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
             M[:nru,:p_eff] = M[:nru,:p_eff].dot(T[:p_eff, :p_eff])
-            log("M = {}".format(M))
+            #log("M = {}".format(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru, :p_eff].dot(X2[:p_eff, :m])
-            log("M = {}".format(M))
-            log("A1 = {}\n A2 = {}".format(A1, A2))
+            #log("M = {}".format(M))
+            #log("A1 = {}\n A2 = {}".format(A1, A2))
             
             return A1, A2
 
         def yty2():
             invT = S
-            log("old M = {}".format(M))
+            #log("old M = {}".format(M))
             M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
             M[:nru,:p_eff] = M[:nru,:p_eff].dot(inv(invT[:p_eff, :p_eff]))
-            log("M = {}".format(M))
+            #log("M = {}".format(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
             return A1, A2
-        log("")
-        log("Block_update")
+        #log("")
+        #log("Block_update")
         m = A1.shape[1]
         n = A1.shape[0]/m
         nru = e1 - u1
         p_eff = eb1 - sb1 
-        log("nru, p_eff = {}, {}".format(nru, p_eff))
+        #log("nru, p_eff = {}, {}".format(nru, p_eff))
         if method == WY1:
             return wy1()
         elif method == WY2:
@@ -182,7 +183,7 @@ class ToeplitzFactorizor:
             return yty2()
 
     def __aggregate(self,S,  X2, beta, A2, p, j, j1, j2, p_eff, method):
-        log("aggregate")
+        #log("aggregate")
         
         def wy1():
             Y1 = S[0] ## it might be Y1 += new Y1
@@ -190,33 +191,32 @@ class ToeplitzFactorizor:
             Y1[j1, j] = -beta
             Y2[:, j] =-beta*X2[j, :m]
 
-            log("Y1_init = " + str(Y1))
-            log("Y2_init = " + str(Y2))
-            
+            #log("Y1_init = " + str(Y1))
+            #log("Y2_init = " + str(Y2))
             if (j > 0):
-                v[: j ] = -beta*X2[j, :m].dot(Y2[:m, :j])
-                log("v = {}".format(v))
+                v[: j ] = beta*np.conj(X2)[j, :m].dot(Y2[:m, :j])
+                #log("v = {}".format(v))
                 Y1[j1, :j] = Y1[j1, :j ] + v[:j ]
-                Y2[:m, :j ] = Y2[:m, : j] +X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
-            log("")
-            log("Y1_final = " + str(Y1))
-            log("Y2_final = " + str(Y2))
+                Y2[:m, :j ] = Y2[:m, : j] + X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
+            #log("")
+            #log("Y1_final = " + str(Y1))
+            #log("Y2_final = " + str(Y2))
             return Y1, Y2
         def wy2():
             W1 = S[0]
             W2 = S[1]
             W1[j1, j] = -beta
             W2[:,j] = -beta*X2[j, :m]
-            log("W1_init = " + str(W1))
-            log("W2_init = " + str(W2))
+            #log("W1_init = " + str(W1))
+            #log("W2_init = " + str(W2))
             
             if j > 0:
                 v[: j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
                 W1[sb1:j1, j] = W1[sb1:j1, :j].dot(v[:j])
                 W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(v[:j])
-            log("")
-            log("W1_final = " + str(W1))
-            log("W2_final = " + str(W2))
+            #log("")
+            #log("W1_final = " + str(W1))
+            #log("W2_final = " + str(W2))
             return W1, W2
         def yty1():
             T = S
@@ -224,17 +224,17 @@ class ToeplitzFactorizor:
             if j > 0:
                 v[:j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
                 T[:j, j]=T[:j, :j].dot(v[:j])
-            log("T = " + str(T))
+            #log("T = " + str(T))
             return T
         def yty2():
             invT = S
-            log("old invT = " + str(invT))
+            #log("old invT = " + str(invT))
             if j == p_eff - 1:
                 invT[:p_eff, :p_eff] = -triu(X2[:p_eff, :m].dot(X2[:p_eff, :m].T))
-                log("invT = " + str(invT))
+                #log("invT = " + str(invT))
                 for jj in range(p_eff):
                     invT[jj,jj] = (invT[jj,jj] - 1.)/2.
-            log("invT = {}".format(invT))
+            #log("invT = {}".format(invT))
             return invT
             
         m = A2.shape[1]
@@ -242,7 +242,7 @@ class ToeplitzFactorizor:
         sb1 = j1 - j
         sb2 = j2 - j
         v = np.zeros(m*(n + 1), complex) 
-        log("sb1, sb2 = {0}, {1}".format(sb1, sb2)) 
+        #log("sb1, sb2 = {0}, {1}".format(sb1, sb2)) 
         if method == WY1:
             return wy1()
         if method == WY2:
@@ -258,8 +258,8 @@ class ToeplitzFactorizor:
         for j in range (0, m):
             j1 = j
             j2 = s2 + j
-            log("")
-            log("j, j1, j2 = {0}, {1}, {2}".format(j, j1, j2))
+            #log("")
+            #log("j, j1, j2 = {0}, {1}, {2}".format(j, j1, j2))
 
             X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, j2)
             
@@ -272,50 +272,51 @@ class ToeplitzFactorizor:
         u2 = j2 + 1
 
         nru = e1 - u1
-        log("u1, u2, nru = {0}, {1}, {2}".format(u1, u2, nru))
+        #log("u1, u2, nru = {0}, {1}, {2}".format(u1, u2, nru))
 
         
         v = np.zeros(m*(n + 1), complex)
 
-        #log("A1[u1:e1, j1] = " + str(A1[u1:e1, j1])
-        #log("A2[u2:e2, :] = " + str(A2[u2:e2, :])
-        #log("X2 = " + str(X2)
-        #log("X2.T = " + str(X2.T)
+        ##log("A1[u1:e1, j1] = " + str(A1[u1:e1, j1])
+        ##log("A2[u2:e2, :] = " + str(A2[u2:e2, :])
+        ##log("X2 = " + str(X2)
+        ##log("X2.T = " + str(X2.T)
 
-        v[:nru] = A1[u1:e1, j1] + A2[u2:e2, :].dot(X2.T)
-        log("v = {0}".format(v[:nru]))
+        v[:nru] = A1[u1:e1, j1] - A2[u2:e2, :].dot(np.conj(X2.T))
+        #log("v = {0}".format(v[:nru]))
         A1[u1:e1, j1] = A1[u1:e1, j1] - beta*v[:nru]
-        log("Final A1 = \n" + str(A1))
+        #log("Final A1 = \n" + str(A1))
 
         if nru != 0:
-            A2[u2:e2, :] = A2[u2:e2, :] - beta*np.array([v[:nru]]).T.dot(np.array([X2[:m]]))
-        log("Final A2 = \n" + str(A2))
+            A2[u2:e2, :] = A2[u2:e2, :] - beta*v[:nru][np.newaxis].T.dot(np.array([X2[:m]]))
+        #log("Final A2 = \n" + str(A2))
         return A1, A2
 
     def __house_vec(self, A1, A2, j1, j2):
-        log("From house_vec:")
+        #log("From house_vec:")
         X2 = np.zeros(A2[j2,:].shape, complex)
         if np.all(np.abs(A2[j2, :]) < 1e-13):
             beta = 0
         else:
-            sigma = A2[j2, :].dot(A2[j2,:].T)
-            alpha = (A1[j1,j1]**2 + sigma)**0.5
-            log("sigma = " + str(sigma))
-            log("alpha = " + str(alpha))
-            if (np.abs(A1[j1,j1] + alpha) < np.abs(A1[j1, j1] - alpha)):
+            sigma = A2[j2, :].dot(np.conj(A2[j2,:]))
+            alpha = (A1[j1,j1]**2 - sigma)**0.5
+            #log("sigma = " + str(sigma))
+            #log("alpha = " + str(alpha))
+            if (np.real(A1[j1,j1] + alpha) < np.real(A1[j1, j1] - alpha)):
                 z = A1[j1, j1]-alpha
-                A1[j1,j1] = alpha
+                A1[j1,j1] = alpha 
             else:
                 z = A1[j1, j1]+alpha
                 A1[j1,j1] = -alpha
+            #A1[j1, j1] = -A1[j1,j1]
             X2 = A2[j2,:]/z
             A2[j2, :] = A2[j2, :]/z
             
-            beta = 2*z*np.conj(z)/(sigma + np.conj(z)*z)
-        log("beta = " + str(beta))
-        log("X2 = {0}".format(X2))
-        log("")
-        log("A1 = {0}".format(A1))
-        log("\nA2 = {0}".format(A2))
-        log("")
+            beta = 2*z*z/(-sigma + z*z)
+        #log("beta = " + str(beta))
+        #log("X2 = {0}".format(X2))
+        #log("")
+        #log("A1 = {0}".format(A1))
+        #log("\nA2 = {0}".format(A2))
+        #log("")
         return X2, beta, A1, A2
