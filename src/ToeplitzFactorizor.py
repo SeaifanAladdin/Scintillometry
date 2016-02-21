@@ -147,7 +147,7 @@ class ToeplitzFactorizor:
         def yty1():
             T = S
             #log("old M = {}".format(M))
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] + A2[u2:e2, :m].dot(X2[:p_eff, :m].T)
+            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
             M[:nru,:p_eff] = M[:nru,:p_eff].dot(T[:p_eff, :p_eff])
             #log("M = {}".format(M))
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
@@ -222,7 +222,7 @@ class ToeplitzFactorizor:
             T = S
             T[j,j] = -beta
             if j > 0:
-                v[:j] = -beta*X2[:j, :m].dot(X2[j, :m][np.newaxis].T)
+                v[:j] = beta*X2[:j, :m].dot(np.conj(X2)[j, :m].T)
                 T[:j, j]=T[:j, :j].dot(v[:j])
             #log("T = " + str(T))
             return T
