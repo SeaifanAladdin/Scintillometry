@@ -24,9 +24,10 @@ def createToeplitz(N, real=False):
 def createBlockedToeplitz(n,m, real=False):
     T_i = np.empty((n, m,m), complex)
     T = np.zeros((m*n, m*n), complex)
+    T_c = []
     for i in range(n):
         T_temp = createToeplitz(m, real)
-        
+        T_c.append(T_temp[0][0])
         for j in range(n):
             
             if j + i + 1 <= n:
@@ -34,6 +35,9 @@ def createBlockedToeplitz(n,m, real=False):
             if j - i >=0:
                 T[(j )*m: (j+1)*m, (j - i)*m: (j-i+1)*m] = np.conj(T_temp.T)
         T_i[i] = T_temp
+    x0 = np.sum(np.abs(T_c))
+    for i in range(len(T)):
+        T[i, i] = x0
         
     
     return T
