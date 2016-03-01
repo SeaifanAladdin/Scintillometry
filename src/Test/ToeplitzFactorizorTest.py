@@ -164,8 +164,8 @@ class ToeplitzFactorizorTest(unittest.TestCase):
 
 
     def __setupC(self, N, m, real = False):
-        func = createToeplitz
-        return ToeplitzFactorizor(func(N, real), m)
+        func = createBlockedToeplitz
+        return ToeplitzFactorizor(func(N/m, m, real), m)
     def __methodSuccessfulTest(self, method, c, p):
         L = c.fact(method, p)
         T = c.T
