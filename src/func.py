@@ -42,6 +42,32 @@ def createBlockedToeplitz(n,m, real=False):
     
     return T
 
+
+def createPaddedBlockedToeplitz(n, m, real=False):
+    T = np.zeros((4*m*n, 4*m*n), complex)
+    T_c = []
+    for i in range(n):
+        T_temp = createToeplitz(m, real)
+        T2 = np.zeros((2*m, 2*m), complex)
+        T2[:m,:m]= T_temp
+        T2[m:, m:] = T_temp
+        T_temp = T2
+        T_c.append(T_temp[0][0])
+        for j in range(n):
+            
+            if j + i + 1 <= n:
+                T[2*(j)*m: 2*(j+1)*m, 2*(j + i)*m: 2*(j+i+1)*m] = T_temp
+            if j - i >=0:
+                T[2*(j )*m: 2*(j+1)*m, 2*(j - i)*m: 2*(j-i+1)*m] = np.conj(T_temp.T)
+    
+    T[2*n*m:, 2*n*m:] = T[:2*n*m, :2*n*m]
+
+    x0 = np.sum(np.abs(T_c))
+    for i in range(len(T)):
+        T[i, i] = x0
+    return T
+    
+
 def LtoBlockedL(L, n, m):
     L_new = np.array(((n, m, m)),complex)
 def generateBlockedT(N, m):
