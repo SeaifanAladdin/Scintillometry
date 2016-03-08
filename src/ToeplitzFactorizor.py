@@ -1,8 +1,7 @@
 ##Give Credits Later
 
 import numpy as np
-from numpy import triu
-from numpy.linalg import inv, cholesky
+from scipy.linalg import inv, cholesky, triu
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir + "/Exceptions")
@@ -24,6 +23,7 @@ SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
     def __init__(self, T, m):
+        ## m = size of block matrices
         N = T.shape[0]
         self.m = m
         if N % m != 0:
@@ -75,7 +75,7 @@ class ToeplitzFactorizor:
         A2 = np.zeros(T.shape, complex)
         A1 = T.copy()
         
-        c = cholesky(A1[:m,:m])
+        c = cholesky(A1[:m,:m], lower=True) 
         A1[:m, :m] = c.copy()
         c = np.conj(c.T) ## C --> C^(dagger)
         A1[m:n*m,:] = A1[m:n*m,:].dot(inv(c))
