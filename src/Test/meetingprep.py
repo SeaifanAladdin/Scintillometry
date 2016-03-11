@@ -27,5 +27,8 @@ def load(n,m, p):
     return t_methods
 
 plt.figure()
-t_methods = load(4, 300, 2)
+plt.subplot(2,1,1)
+t_methods = load(4, 300, 20)
+plt.subplot(2,1,2)
+t_methods = load(4, 300, 50)
 plt.show()
