@@ -29,7 +29,6 @@ def createBlockedToeplitz(n,m, real=False):
         T_temp = createToeplitz(m, real)
         T_c.append(T_temp[0][0])
         for j in range(n):
-            
             if j + i + 1 <= n:
                 T[(j)*m: (j+1)*m, (j + i)*m: (j+i+1)*m] = T_temp
             if j - i >=0:
@@ -53,14 +52,13 @@ def createPaddedBlockedToeplitz(n, m, real=False):
         T2[m:, m:] = T_temp
         T_temp = T2
         T_c.append(T_temp[0][0])
-        for j in range(n):
-            
-            if j + i + 1 <= n:
+        for j in range(2*n):
+            if j + i + 1 <= 2*n:
                 T[2*(j)*m: 2*(j+1)*m, 2*(j + i)*m: 2*(j+i+1)*m] = T_temp
-            if j - i >=0:
+            if j - i >= 0:
                 T[2*(j )*m: 2*(j+1)*m, 2*(j - i)*m: 2*(j-i+1)*m] = np.conj(T_temp.T)
     
-    T[2*n*m:, 2*n*m:] = T[:2*n*m, :2*n*m]
+    #T[2*n*m:, 2*n*m:] = T[:2*n*m, :2*n*m]
 
     x0 = np.sum(np.abs(T_c))
     for i in range(len(T)):
