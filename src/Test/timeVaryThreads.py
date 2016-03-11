@@ -2,6 +2,7 @@ import numpy as np
 #import matplotlib.pyplot as plt
 import sys
 import timeit
+from mpi4py import MPI
 
 import os
 numThread = int(os.environ["OMP_NUM_THREADS"])
@@ -17,26 +18,31 @@ sys.path.insert(0,parentdir);
 sys.path.insert(0, parentdir + \"/Exceptions\");
 from ToeplitzFactorizor import ToeplitzFactorizor;
 import numpy as np;
-from func import createBlockedToeplitz;
+from func import createPaddedBlockedToeplitz;
 
 """
 
 SETUP1 ="""n = {0}; m = {1}; p = {2};
-T = createBlockedToeplitz(n, m)
-c = ToeplitzFactorizor(T, m)
+T = createPaddedBlockedToeplitz(n, m)
+c = ToeplitzFactorizor(T, 2*m)
 """
 
 SETUP2="""n, m = {0}, {1};
-T = createBlockedToeplitz(n, m)"""
+T = createPaddedBlockedToeplitz(n, m)"""
 
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 
 methods = [SEQ, WY1, WY2, YTY1, YTY2, "numpy", "Niliou's seq"]
 
-num = 5
-n = 4
-m = 300
-p = 2 
+
+if len(sys.argv) != 4:
+    print "Usage: %s filename(withoutextention)" % (sys.argv[0])
+    sys.exit(1)
+
+num = sys.argv[4]
+n = sys.argv[1]
+m = sys.argv[2]
+p = sys.argv[3]
 
 timeMethods = np.zeros((7, 2) )
 setup = SETUP + SETUP1.format(n,m,p)
@@ -49,7 +55,7 @@ for j in range(len(methods)):
         t = timeit.repeat("np.linalg.cholesky(T)", setup2, number = num)
         timeMethods[j, :] = np.mean(t), np.std(t)
     elif j == 6:
-        t = timeit.repeat("td.toeplitz_blockschur(T, {0}, 0)".format(m), setup2, number= num)
+        t = timeit.repeat("td.toeplitz_blockschur(T, 2*{0}, 0)".format(m), setup2, number= num)
         timeMethods[j, :] = np.mean(t), np.std(t)
 
 for j in range(len(methods)):
