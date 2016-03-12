@@ -320,3 +320,19 @@ class ToeplitzFactorizor:
         #log("\nA2 = {0}".format(A2))
         #log("")
         return X2, beta, A1, A2
+
+
+if __name__=="__main__":
+    if len(sys.argv) != 5:
+        print "Please pass in the following parameters: method n m p"
+    else:
+        from func import createBlockedToeplitz, testFactorization
+        n = int(sys.argv[2])
+        m = int(sys.argv[3])
+        method = sys.argv[1]
+        p = int(sys.argv[4])
+        T = createBlockedToeplitz(n, m)
+        c = ToeplitzFactorizor(T, m)
+        L = c.fact(method, p)
+        if not testFactorization(T, L):
+            print "L error"
