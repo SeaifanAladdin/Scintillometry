@@ -163,24 +163,59 @@ class ToeplitzFactorizor:
         def wy2():
             W1, W2 = S
             if p_eff == 0: return A1, A2
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) - A2[u2:e2, :m].dot(np.conj(W2)[:m, :p_eff])
-            
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(X2[:p_eff, :m])
-            
-            
-            
-            
-            return A1, A2
+            if rank >= s2:
+                    s = 0
+                    if rank == s2:
+                        s = u1
+                    B2 = A2[s:, :m].dot(np.conj(W2[:m,:p_eff]))
+                    comm.Send(B2, dest=(rank- s2), tag=15)
+                    M = np.empty((m - s, p_eff), complex)
+                    
+                    comm.Recv(M, source=(rank - s2), tag=16)
+
+
+                    A2[s:, :m] = A2[s:,:m] + M.dot(X2)
+            if rank<=e1:
+                s = 0
+                if rank == 0:
+                    s = u1
+                B1 = A1[s:, sb1:eb1].dot(W1[sb1:eb1, :p_eff])
+                
+                B2 = np.empty((m - s, p_eff), complex)
+                comm.Recv(B2, source=(rank + s2), tag=15)
+                M = B1 - B2
+                comm.Send(M, dest=(rank + s2), tag=16)
+                A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
+
+            return A1, A2     
+
+
         def yty1():
             T = S
-            
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
-            M[:nru,:p_eff] = M[:nru,:p_eff].dot(T[:p_eff, :p_eff])
-            
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru, :p_eff].dot(X2[:p_eff, :m])
-            
+            if rank >= s2:
+                s = 0
+                if rank == s2:
+                    s = u1
+                B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
+                comm.Send(B2, dest=(rank- s2), tag=15)
+                M = np.empty((m - s, p_eff), complex)
+                
+                comm.Recv(M, source=(rank - s2), tag=16)
+                A2[s:, :m] = A2[s:,:m] + M.dot(X2)
+            if rank<=e1:
+                s = 0
+                if rank == 0:
+                    s = u1
+                B1 = A1[s:, sb1:eb1]
+                
+                B2 = np.empty((m - s, p_eff), complex)
+                comm.Recv(B2, source=(rank + s2), tag=15)
+                M = B1 - B2
+                M = M.dot(T[:p_eff,:p_eff])
+                comm.Send(M, dest=(rank + s2), tag=16)
+
+                A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
+
             
             
             return A1, A2
