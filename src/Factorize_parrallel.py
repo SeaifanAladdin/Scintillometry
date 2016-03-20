@@ -36,6 +36,8 @@ class ToeplitzFactorizor:
         n = self.n
         A1, A2 = self.__setup_gen(self.T)
 
+
+
         self.L[rank*m:(rank + 1)*m,:m] = A1
             
         for k in range(1,n):
@@ -43,12 +45,14 @@ class ToeplitzFactorizor:
             s1, e1, s2, e2 = self.__set_curr_gen(k, n)
             if method==SEQ:
                 A1, A2 = self.__seq_reduc(A1, A2, s1, e1, s2, e2)
+                
             else:
                 A1, A2 = self.__block_reduc(A1, A2, s1, e1, s2, e2, m, p, method)
-            if self.work1:
+            if rank <= e1:
                 self.L[(rank + k)*m:(rank + k + 1)*m, k*m:(k + 1)*m]  = A1
         L = self.L
         L_temp = np.array(comm.gather(L, root=0))
+        
         if rank == 0:
             self.L = np.sum(L_temp, 0)
             return self.L
@@ -77,7 +81,6 @@ class ToeplitzFactorizor:
         e1 = (n - k - 1)
         s2 = k
         e2 = n
-
         if rank <= e1:
             self.work1 = True
         else:
@@ -89,14 +92,20 @@ class ToeplitzFactorizor:
         return s1, e1, s2, e2
 
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
-        
+        self.work1 = False
+        self.work2 = False
+        if rank == 0:
+            self.work1 = True
+        if rank == s2:
+            self.work2 = True
+
         n = A1.shape[0]/m
-        M = np.zeros((m*n,m*n), dtype=complex)
+        M = np.zeros((m*n,m), dtype=complex)
+        ch = 0
         for sb1 in range (0, m, p):
-            
-            sb2 = sb1 + s2
-            eb1 = min(sb1 + p, m)
-            eb2 = eb1 + s2
+            sb2 = s2*m + sb1
+            eb1 = min(sb1 + p, m) #next j
+            eb2 = s2*m + eb1
             u1 = eb1
             u2 = eb2
             p_eff = min(p, m - sb1)
@@ -109,31 +118,51 @@ class ToeplitzFactorizor:
             for j in range(0, p_eff):
                 
                 j1 = sb1 + j
-                j2 = sb2 + j 
-                
-                X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, j2)
+                j2 = sb2 + j
+                X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, s2) ##s2 or sb2?
                 XX2[j] = X2
-                A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, j1, j2, m, n)
+
+                A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, s2, j1, m, n) ##is this good?
                 S = self.__aggregate(S, XX2, beta, A2, p, j, j1, j2, p_eff, method)
-            A1, A2 = self.__block_update(M, XX2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method)
+
+                
+            A1, A2 = self.__block_update(M, XX2, A1, sb1, eb1, u1, e1, s2, A2, sb2, eb2, u2, e2, S, method)
+            #raise Exception()
         return A1, A2
-    def __block_update(self,M, X2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method):
+    def __block_update(self,M, X2, A1, sb1, eb1, u1, e1,s2, A2, sb2, eb2, u2, e2, S, method):
         def wy1():
             Y1, Y2 = S
-            if nru == 0 or p_eff == 0: return A1, A2
-            M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
-            
-            A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(Y2[:m, :p_eff].T)
-            M[:nru,:p_eff] =  M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
-            
-            
+            if p_eff == 0: return A1, A2
+            if rank >= s2:
+                    s = 0
+                    if rank == s2:
+                        s = u1
+                    B2 = A2[s:, :m].dot(np.conj(X2)[:p_eff,:m].T)
+                    comm.Send(B2, dest=(rank- s2), tag=15)
+                    M = np.empty((m - s, p_eff), complex)
+                    
+                    comm.Recv(M, source=(rank - s2), tag=16)
+
+
+                    A2[s:, :m] = A2[s:,:m] + M.dot(Y2[:m, :p_eff].T)
+                   
+            if rank<=e1:
+               
+                    s = 0
+                    if rank == 0:
+                        s = u1
+                    B1 = A1[s:, sb1:eb1]
+                    
+                    B2 = np.empty((m - s, p_eff), complex)
+                    comm.Recv(B2, source=(rank + s2), tag=15)
+                    M = B1 - B2
+                    comm.Send(M, dest=(rank + s2), tag=16)
+                    A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M.dot(Y1[sb1:eb1, :p_eff].T)
             
             return A1, A2
         def wy2():
             W1, W2 = S
-            
-            if nru == 0 or p_eff == 0: return A1, A2
+            if p_eff == 0: return A1, A2
             M[:nru,:p_eff] = A1[u1:e1, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) - A2[u2:e2, :m].dot(np.conj(W2)[:m, :p_eff])
             
             A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
@@ -169,7 +198,7 @@ class ToeplitzFactorizor:
         
         m = A1.shape[1]
         n = A1.shape[0]/m
-        nru = e1 - u1
+        nru = e1*m - u1
         p_eff = eb1 - sb1 
         
         if method == WY1:
@@ -181,7 +210,7 @@ class ToeplitzFactorizor:
         elif method == YTY2:
             return yty2()
 
-    def __aggregate(self,S,  X2, beta, A2, p, j, j1, j2, p_eff, method):
+    def __aggregate(self,S,  X2, beta, A2, p, sb1, sb2, j, p_eff, method):
         
         
         def wy1():
@@ -189,15 +218,11 @@ class ToeplitzFactorizor:
             Y2 = S[1]
             Y1[j1, j] = -beta
             Y2[:, j] =-beta*X2[j, :m]
-
-            
-            
             if (j > 0):
                 v[: j ] = beta*np.conj(X2)[j, :m].dot(Y2[:m, :j])
                 
                 Y1[j1, :j] = Y1[j1, :j ] + v[:j ]
                 Y2[:m, :j ] = Y2[:m, : j] + X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
-            
             
             
             return Y1, Y2
@@ -237,10 +262,80 @@ class ToeplitzFactorizor:
             
         m = A2.shape[1]
         n = A2.shape[0]/m
+        j1 = sb1 + j
+        j2 = sb2 + j
+        v = np.zeros(m*(n + 1), complex) 
+        
+        if method == WY1:
+            return wy1()
+        if method == WY2:
+            return wy2()
+        if method == YTY1:
+            return yty1()
+        if method == YTY2:
+            return yty2()
+
+    def __aggregate(self,S,  X2, beta, A2, p, j, j1, j2, p_eff, method):
+        #log("aggregate")
+        
+        def wy1():
+            Y1 = S[0] ## it might be Y1 += new Y1
+            Y2 = S[1]
+            Y1[j1, j] = -beta
+            Y2[:, j] =-beta*X2[j, :m]
+
+            #log("Y1_init = " + str(Y1))
+            #log("Y2_init = " + str(Y2))
+            if (j > 0):
+                v[: j ] = beta*np.conj(X2)[j, :m].dot(Y2[:m, :j])
+                #log("v = {}".format(v))
+                Y1[j1, :j] = Y1[j1, :j ] + v[:j ]
+                Y2[:m, :j ] = Y2[:m, : j] + X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
+            #log("")
+            #log("Y1_final = " + str(Y1))
+            #log("Y2_final = " + str(Y2))
+            return Y1, Y2
+        def wy2():
+            W1 = S[0]
+            W2 = S[1]
+            W1[j1, j] = -beta
+            W2[:,j] = -beta*X2[j, :m]
+            #log("W1_init = " + str(W1))
+            #log("W2_init = " + str(W2))
+            
+            if j > 0:
+                v[: j] = beta*X2[:j, :m].dot(np.conj(X2[j, :m].T))
+                W1[sb1:j1, j] = W1[sb1:j1, :j].dot(v[:j])
+                W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(np.conj(v)[:j])
+            #log("")
+            #log("W1_final = " + str(W1))
+            #log("W2_final = " + str(W2))
+            return W1, W2
+        def yty1():
+            T = S
+            T[j,j] = -beta
+            if j > 0:
+                v[:j] = beta*X2[:j, :m].dot(np.conj(X2)[j, :m].T)
+                T[:j, j]=T[:j, :j].dot(v[:j])
+            #log("T = " + str(T))
+            return T
+        def yty2():
+            invT = S
+            #log("old invT = " + str(invT))
+            if j == p_eff - 1:
+                invT[:p_eff, :p_eff] = triu(X2[:p_eff, :m].dot(np.conj(X2)[:p_eff, :m].T))
+                #log("invT = " + str(invT))
+                for jj in range(p_eff):
+                    invT[jj,jj] = (invT[jj,jj] - 1.)/2.
+            #log("invT = {}".format(invT))
+            return invT
+            
+        m = A2.shape[1]
+        n = A2.shape[0]/m
         sb1 = j1 - j
         sb2 = j2 - j
         v = np.zeros(m*(n + 1), complex) 
-        
+        #log("sb1, sb2 = {0}, {1}".format(sb1, sb2)) 
         if method == WY1:
             return wy1()
         if method == WY2:
@@ -257,47 +352,59 @@ class ToeplitzFactorizor:
 
             X2, beta, A1, A2 = self.__house_vec(A1, A2, j, s2)
             
-            A1, A2 = self.__seq_update(A1, A2, X2, beta, e1, s2, j, m, n)
+            A1, A2 = self.__seq_update(A1, A2, X2, beta, e1, e2, s2, j, m, n)
         return A1, A2
 
-    def __seq_update(self, A1, A2, X2, beta, e1, s2, j, m, n):
+    def __seq_reduc(self, A1, A2, s1, e1, s2, e2):
+        n = self.n
+        for j in range (0, self.m):
+
+            X2, beta, A1, A2 = self.__house_vec(A1, A2, j, s2)
+            
+            A1, A2 = self.__seq_update(A1, A2, X2, beta, e1*m, e2*m, s2, j, m, n)
+        return A1, A2
+
+    def __seq_update(self, A1, A2, X2, beta, e1, e2, s2, j, m, n):
         #X2 = np.array([X2])
         u = j + 1
 
         nru = e1*m - (s2*m + j + 1)
         if self.work2:
             B1 = A2.dot(np.conj(X2.T))
+            start = 0
+            end = m
             if rank == s2:
-                B1 = B1[u:]
+                start = u
+            if rank == e2/m:
+                end = e2 % m or m
+            B1 = B1[start:end]
             comm.Send(B1, dest=(rank - s2), tag=13)
         if self.work1:
-           
+            start = 0
+            end = m
             if rank == 0:
-                B1 = np.empty(m - u, complex)
-                comm.Recv(B1, source=(rank + s2), tag=13)
-                B2 = A1[:, j]
-                B2= B2[u:]
-            else:
-                B1 = np.empty(m, complex)
-                comm.Recv(B1, source=(rank + s2), tag=13)
-                B2 = A1[:, j]
+                start = u
+            if rank == e1/m:
+                end = e1 % m or m
+
+            B1 = np.empty(end-start, complex)
+            comm.Recv(B1, source=(rank + s2), tag=13)
+            B2 = A1[start:end, j]
                 
             v = B2 - B1
             comm.Send(v, dest=(rank+s2), tag=14)
-            if rank == 0:
-                A1[u:,j] -= beta*v
-            else:
-                A1[:,j] -= beta*v
+            A1[start:end,j] -= beta*v
+   
         if self.work2:
-        
+            start = 0
+            end = m
             if rank == s2:
-                v = np.empty(m-u, complex)
-                comm.Recv(v, source=(rank - s2), tag=14)
-                A2[u:,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:m]]))
-            else:
-                v = np.empty(m, complex)
-                comm.Recv(v, source=(rank - s2), tag=14)
-                A2 -= beta*v[np.newaxis].T.dot(np.array([X2[:m]]))
+                start = u
+            if rank == e2/m :
+                end = e2 % m or m
+            v = np.empty(end-start,complex)
+            comm.Recv(v, source=(rank - s2), tag=14)
+            A2[start:end,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:]]))
             
         return A1, A2
 
@@ -336,8 +443,8 @@ class ToeplitzFactorizor:
 
         return X2, beta, A1, A2
 
-
 if __name__=="__main__":
+    np.random.seed(20)
     comm = MPI.COMM_WORLD
     size  = comm.Get_size()
     rank = comm.Get_rank()
@@ -354,10 +461,14 @@ if __name__=="__main__":
         T = None
         if rank == 0:
             T = createBlockedToeplitz(n, m)
-        T1 = comm.bcast(T, root=0)[:m, rank*m:(rank+1)*m]
+        T1 = comm.bcast(T, root=0)[rank*m:(rank+1)*m, :m]
         c = ToeplitzFactorizor(T1)
         L = c.fact(method, p)
-        
+        if rank == 0:
+            print testFactorization(T, L)
         if rank == 0 and not testFactorization(T, L):
+            print np.around(L,1)
+            print
+            print np.around(cholesky(T, lower=True),1)
             print "L error"
 	
