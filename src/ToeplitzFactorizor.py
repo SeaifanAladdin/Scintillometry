@@ -41,7 +41,6 @@ class ToeplitzFactorizor:
         m = self.m
         n = T.shape[0]/m
         A1, A2 = self.__setup_gen(T, m)
-
         #log(A1)
         #log("")
         #log(A2)
@@ -65,6 +64,9 @@ class ToeplitzFactorizor:
             
             self.L[k*m:e2, k*m:(k + 1)*m]  = A1[:e1, :]
             #log("new L at step k = \n{0}".format(self.L))
+        
+
+       
         return self.L
 
     ##Private Methods
@@ -90,9 +92,10 @@ class ToeplitzFactorizor:
         return s1, e1, s2, e2
 
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
+        
         #log("method = " + method)
         n = A1.shape[0]/m
-        M = np.zeros((m*n,m*n), dtype=complex)
+        M = np.zeros((m*n,m), dtype=complex)
         for sb1 in range (0, m, p):
             #log("")
             sb2 = sb1 + s2
@@ -103,6 +106,7 @@ class ToeplitzFactorizor:
             p_eff = min(p, m - sb1)
             #log("sb1, sb2, eb1, eb2, u1, u2, p_eff = {0}, {1}, {2}, {3}, {4}, {5}, {6}".format(sb1, sb2, eb1, eb2, u1, u2, p_eff))
             XX2 = np.zeros((p_eff, m), complex)
+            
             if method == WY1 or method == WY2:
                 S = np.array([np.zeros((m,p)),np.zeros((m,p))], complex)
             elif method == YTY1 or YTY2:
@@ -111,22 +115,27 @@ class ToeplitzFactorizor:
                 #log("")
                 j1 = sb1 + j
                 j2 = sb2 + j 
-                #log("j, j1, j2 = {0}, {1}, {2}".format(j, j1, j2))
+                #log("j, j1, j2 = *{0}, {1}, {2}".format(j, j1, j2))
                 X2, beta, A1, A2 = self.__house_vec(A1, A2, j1, j2)
+
                 XX2[j] = X2
                 A1, A2 = self.__seq_update(A1, A2, X2, beta, eb1, eb2, j1, j2, m, n)
                 S = self.__aggregate(S, XX2, beta, A2, p, j, j1, j2, p_eff, method)
+                #print "agg"
+                #print np.around(S,1)
+                #print np.around(S[0],1)
             A1, A2 = self.__block_update(M, XX2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method)
         return A1, A2
     def __block_update(self,M, X2, A1, sb1, eb1, u1, e1, A2, sb2, eb2, u2, e2, S, method):
         def wy1():
             Y1, Y2 = S
+            
             if nru == 0 or p_eff == 0: return A1, A2
             M[:nru,:p_eff] = A1[u1:e1, sb1:eb1] - A2[u2:e2, :m].dot(np.conj(X2)[:p_eff, :m].T)
             #log("M = " + str(M))
             A2[u2:e2, :m] = A2[u2:e2, :m] + M[:nru,:p_eff].dot(Y2[:m, :p_eff].T)
-            M[:nru,:p_eff] =  M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
-            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff]
+            #M[:nru,:p_eff] =  M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
+            A1[u1:e1, sb1:eb1] = A1[u1:e1, sb1:eb1] + M[:nru,:p_eff].dot(Y1[sb1:eb1, :p_eff].T)
             #log("")
             #log("Final A1 = " + str(A1))
             #log("Final A2 = " + str(A2))
@@ -286,7 +295,6 @@ class ToeplitzFactorizor:
         #log("v = {0}".format(v[:nru]))
         A1[u1:e1, j1] = A1[u1:e1, j1] - beta*v[:nru]
         #log("Final A1 = \n" + str(A1))
-
         if nru != 0:
             A2[u2:e2, :] = A2[u2:e2, :] - beta*v[:nru][np.newaxis].T.dot(np.array([X2[:m]]))
         #log("Final A2 = \n" + str(A2))
@@ -323,8 +331,9 @@ class ToeplitzFactorizor:
 
 
 if __name__=="__main__":
+    np.random.seed(20)
     if len(sys.argv) != 5:
-        print "Please pass in the following parameters: method n m p"
+        print "Please pass in the following arguments: method n m p"
     else:
         from func import createBlockedToeplitz, testFactorization
         n = int(sys.argv[2])
@@ -336,3 +345,5 @@ if __name__=="__main__":
         L = c.fact(method, p)
         if not testFactorization(T, L):
             print "L error"
+
+    
