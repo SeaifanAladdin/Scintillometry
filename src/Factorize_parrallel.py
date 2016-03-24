@@ -269,70 +269,6 @@ class ToeplitzFactorizor:
         elif method == YTY2:
             return yty2()
 
-    def __aggregate(self,S,  X2, beta, A2, p, sb1, sb2, j, p_eff, method):
-        
-        
-        def wy1():
-            Y1 = S[0] ## it might be Y1 += new Y1
-            Y2 = S[1]
-            Y1[j1, j] = -beta
-            Y2[:, j] =-beta*X2[j, :m]
-            if (j > 0):
-                v[: j ] = beta*np.conj(X2)[j, :m].dot(Y2[:m, :j])
-                
-                Y1[j1, :j] = Y1[j1, :j ] + v[:j ]
-                Y2[:m, :j ] = Y2[:m, : j] + X2[j, :m][np.newaxis].T.dot(v[:j ][np.newaxis])
-            
-            
-            return Y1, Y2
-        def wy2():
-            W1 = S[0]
-            W2 = S[1]
-            W1[j1, j] = -beta
-            W2[:,j] = -beta*X2[j, :m]
-            
-            
-            
-            if j > 0:
-                v[: j] = beta*X2[:j, :m].dot(np.conj(X2[j, :m].T))
-                W1[sb1:j1, j] = W1[sb1:j1, :j].dot(v[:j])
-                W2[:m, j]= W2[:m, j] + W2[:m, :j].dot(np.conj(v)[:j])
-            
-            
-            return W1, W2
-        def yty1():
-            T = S
-            T[j,j] = -beta
-            if j > 0:
-                v[:j] = beta*X2[:j, :m].dot(np.conj(X2)[j, :m].T)
-                T[:j, j]=T[:j, :j].dot(v[:j])
-            
-            return T
-        def yty2():
-            invT = S
-            
-            if j == p_eff - 1:
-                invT[:p_eff, :p_eff] = triu(X2[:p_eff, :m].dot(np.conj(X2)[:p_eff, :m].T))
-                
-                for jj in range(p_eff):
-                    invT[jj,jj] = (invT[jj,jj] - 1.)/2.
-            
-            return invT
-            
-        m = A2.shape[1]
-        n = A2.shape[0]/m
-        j1 = sb1 + j
-        j2 = sb2 + j
-        v = np.zeros(m*(n + 1), complex) 
-        
-        if method == WY1:
-            return wy1()
-        if method == WY2:
-            return wy2()
-        if method == YTY1:
-            return yty1()
-        if method == YTY2:
-            return yty2()
 
     def __aggregate(self,S,  X2, beta, A2, p, j, j1, j2, p_eff, method):
         #log("aggregate")
@@ -404,18 +340,11 @@ class ToeplitzFactorizor:
         if method == YTY2:
             return yty2()
 
-    
-    def __seq_reduc(self, A1, A2, s1, e1, s2, e2):
-        n = self.n
-        for j in range (0, self.m):
 
-            X2, beta, A1, A2 = self.__house_vec(A1, A2, j, s2)
-            
-            A1, A2 = self.__seq_update(A1, A2, X2, beta, e1, e2, s2, j, m, n)
-        return A1, A2
 
     def __seq_reduc(self, A1, A2, s1, e1, s2, e2):
         n = self.n
+        m = self.m
         for j in range (0, self.m):
 
             X2, beta, A1, A2 = self.__house_vec(A1, A2, j, s2)
