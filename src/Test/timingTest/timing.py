@@ -53,6 +53,6 @@ for threadi in thread:
         for ni in n:
             for mi in m:
                 for pi in p:
-                    os.system("WRITE_TO='{4}' OMP_NUM_THREADS=8  mpirun -np {6} python {7} {0} {1} {2} {3} {5} {6}".format(ni, mi, pi, num, writeTo, threadi, npri, fi1))
+                    os.system("WRITE_TO='{4}' OMP_NUM_THREADS=8  mpirun -np 1 python {7} {0} {1} {2} {3} {5} {6}".format(ni, mi, pi, num, writeTo, threadi, npri, fi1))
                     os.system("WRITE_TO='{4}' OMP_NUM_THREADS=8  mpirun -np {6} python {7} {0} {1} {2} {3} {5} {6}".format(ni, mi, pi, num, writeTo, threadi, npri, fi2))
 

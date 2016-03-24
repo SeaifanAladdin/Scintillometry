@@ -12,12 +12,14 @@ def timeMyMethods(n,m,p, method, num=3):
     from func import createBlockedToeplitz, testFactorization
     import timeit
     SETUP = """from func import createBlockedToeplitz; from Factorize_parrallel import ToeplitzFactorizor;
+import numpy as np
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 size  = comm.Get_size()
 rank = comm.Get_rank()
 n = {0}; m = {1}; p = {2};
 method = '{3}';
+T = np.empty((m,m), complex)
 if rank == 0:
     T = createBlockedToeplitz(n, m);
 T1 = comm.bcast(T, root=0)[rank*m:(rank+1)*m, :m]
