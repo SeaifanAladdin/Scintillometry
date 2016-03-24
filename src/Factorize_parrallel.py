@@ -19,9 +19,14 @@ SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
     def __init__(self, T):
+        self.comm = MPI.COMM_WORLD
+        size  = self.comm.Get_size()
+        self.rank = self.comm.Get_rank()
         self.T = np.array(T, complex)
-        self.n = size
-        self.m = len(T)
+        n = size
+        self.n = n
+        m = len(T)
+        self.m = m
         self.L = np.zeros((n*m, n*m), complex)
 
         
@@ -38,7 +43,7 @@ class ToeplitzFactorizor:
 
 
 
-        self.L[rank*m:(rank + 1)*m,:m] = A1
+        self.L[self.rank*m:(self.rank + 1)*m,:m] = A1
             
         for k in range(1,n):
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
@@ -48,12 +53,12 @@ class ToeplitzFactorizor:
                 
             else:
                 A1, A2 = self.__block_reduc(A1, A2, s1, e1, s2, e2, m, p, method)
-            if rank <= e1:
-                self.L[(rank + k)*m:(rank + k + 1)*m, k*m:(k + 1)*m]  = A1
+            if self.rank <= e1:
+                self.L[(self.rank + k)*m:(self.rank + k + 1)*m, k*m:(k + 1)*m]  = A1
         L = self.L
-        L_temp = np.array(comm.gather(L, root=0))
+        L_temp = np.array(self.comm.gather(L, root=0))
         
-        if rank == 0:
+        if self.rank == 0:
             self.L = np.sum(L_temp, 0)
             return self.L
 
@@ -65,10 +70,10 @@ class ToeplitzFactorizor:
         cinv = None
         
         ##The root rank will compute the cholesky decomposition
-        if rank == 0:
+        if self.rank == 0:
             c = cholesky(T, lower=True)
             cinv = inv(np.conj(c.T))
-        cinv = comm.bcast(cinv, root=0)
+        cinv = self.comm.bcast(cinv, root=0)
         A1= T.dot(cinv)
         A2 = 1j*A1
 
@@ -81,11 +86,11 @@ class ToeplitzFactorizor:
         e1 = (n - k - 1)
         s2 = k
         e2 = n
-        if rank <= e1:
+        if self.rank <= e1:
             self.work1 = True
         else:
             self.work1 = False;
-        if rank>= s2:
+        if self.rank>= s2:
             self.work2 = True
         else:
             self.work2 = False
@@ -94,9 +99,9 @@ class ToeplitzFactorizor:
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
         self.work1 = False
         self.work2 = False
-        if rank == 0:
+        if self.rank == 0:
             self.work1 = True
-        if rank == s2:
+        if self.rank == s2:
             self.work2 = True
 
         n = A1.shape[0]/m
@@ -133,58 +138,58 @@ class ToeplitzFactorizor:
         def wy1():
             Y1, Y2 = S
             if p_eff == 0: return A1, A2
-            if rank >= s2:
+            if self.rank >= s2:
                     s = 0
-                    if rank == s2:
+                    if self.rank == s2:
                         s = u1
                     B2 = A2[s:, :m].dot(np.conj(X2)[:p_eff,:m].T)
-                    comm.Send(B2, dest=(rank- s2), tag=15)
+                    self.comm.Send(B2, dest=(self.rank- s2), tag=15)
                     M = np.empty((m - s, p_eff), complex)
                     
-                    comm.Recv(M, source=(rank - s2), tag=16)
+                    self.comm.Recv(M, source=(self.rank - s2), tag=16)
 
 
                     A2[s:, :m] = A2[s:,:m] + M.dot(Y2[:m, :p_eff].T)
                    
-            if rank<=e1:
+            if self.rank<=e1:
                
                     s = 0
-                    if rank == 0:
+                    if self.rank == 0:
                         s = u1
                     B1 = A1[s:, sb1:eb1]
                     
                     B2 = np.empty((m - s, p_eff), complex)
-                    comm.Recv(B2, source=(rank + s2), tag=15)
+                    self.comm.Recv(B2, source=(self.rank + s2), tag=15)
                     M = B1 - B2
-                    comm.Send(M, dest=(rank + s2), tag=16)
+                    self.comm.Send(M, dest=(self.rank + s2), tag=16)
                     A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M.dot(Y1[sb1:eb1, :p_eff].T)
             
             return A1, A2
         def wy2():
             W1, W2 = S
             if p_eff == 0: return A1, A2
-            if rank >= s2:
+            if self.rank >= s2:
                     s = 0
-                    if rank == s2:
+                    if self.rank == s2:
                         s = u1
                     B2 = A2[s:, :m].dot(np.conj(W2[:m,:p_eff]))
-                    comm.Send(B2, dest=(rank- s2), tag=15)
+                    self.comm.Send(B2, dest=(self.rank- s2), tag=15)
                     M = np.empty((m - s, p_eff), complex)
                     
-                    comm.Recv(M, source=(rank - s2), tag=16)
+                    self.comm.Recv(M, source=(self.rank - s2), tag=16)
 
 
                     A2[s:, :m] = A2[s:,:m] + M.dot(X2)
-            if rank<=e1:
+            if self.rank<=e1:
                 s = 0
-                if rank == 0:
+                if self.rank == 0:
                     s = u1
                 B1 = A1[s:, sb1:eb1].dot(W1[sb1:eb1, :p_eff])
                 
                 B2 = np.empty((m - s, p_eff), complex)
-                comm.Recv(B2, source=(rank + s2), tag=15)
+                self.comm.Recv(B2, source=(self.rank + s2), tag=15)
                 M = B1 - B2
-                comm.Send(M, dest=(rank + s2), tag=16)
+                self.comm.Send(M, dest=(self.rank + s2), tag=16)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
 
             return A1, A2     
@@ -192,27 +197,27 @@ class ToeplitzFactorizor:
 
         def yty1():
             T = S
-            if rank >= s2:
+            if self.rank >= s2:
                 s = 0
-                if rank == s2:
+                if self.rank == s2:
                     s = u1
                 B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
-                comm.Send(B2, dest=(rank- s2), tag=15)
+                self.comm.Send(B2, dest=(self.rank- s2), tag=15)
                 M = np.empty((m - s, p_eff), complex)
                 
-                comm.Recv(M, source=(rank - s2), tag=16)
+                self.comm.Recv(M, source=(self.rank - s2), tag=16)
                 A2[s:, :m] = A2[s:,:m] + M.dot(X2)
-            if rank<=e1:
+            if self.rank<=e1:
                 s = 0
-                if rank == 0:
+                if self.rank == 0:
                     s = u1
                 B1 = A1[s:, sb1:eb1]
                 
                 B2 = np.empty((m - s, p_eff), complex)
-                comm.Recv(B2, source=(rank + s2), tag=15)
+                self.comm.Recv(B2, source=(self.rank + s2), tag=15)
                 M = B1 - B2
                 M = M.dot(T[:p_eff,:p_eff])
-                comm.Send(M, dest=(rank + s2), tag=16)
+                self.comm.Send(M, dest=(self.rank + s2), tag=16)
 
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
 
@@ -223,27 +228,27 @@ class ToeplitzFactorizor:
         def yty2():
             invT = S
 
-            if rank >= s2:
+            if self.rank >= s2:
                 s = 0
-                if rank == s2:
+                if self.rank == s2:
                     s = u1
                 B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
-                comm.Send(B2, dest=(rank- s2), tag=15)
+                self.comm.Send(B2, dest=(self.rank- s2), tag=15)
                 M = np.empty((m - s, p_eff), complex)
                 
-                comm.Recv(M, source=(rank - s2), tag=16)
+                self.comm.Recv(M, source=(self.rank - s2), tag=16)
                 A2[s:, :m] = A2[s:,:m] + M.dot(X2)
-            if rank<=e1:
+            if self.rank<=e1:
                 s = 0
-                if rank == 0:
+                if self.rank == 0:
                     s = u1
                 B1 = A1[s:, sb1:eb1]
                 
                 B2 = np.empty((m - s, p_eff), complex)
-                comm.Recv(B2, source=(rank + s2), tag=15)
+                self.comm.Recv(B2, source=(self.rank + s2), tag=15)
                 M = B1 - B2
                 M = M.dot(inv(invT[:p_eff,:p_eff]))
-                comm.Send(M, dest=(rank + s2), tag=16)
+                self.comm.Send(M, dest=(self.rank + s2), tag=16)
 
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
             
@@ -427,37 +432,37 @@ class ToeplitzFactorizor:
             B1 = A2.dot(np.conj(X2.T))
             start = 0
             end = m
-            if rank == s2:
+            if self.rank == s2:
                 start = u
-            if rank == e2/m:
+            if self.rank == e2/m:
                 end = e2 % m or m
             B1 = B1[start:end]
-            comm.Send(B1, dest=(rank - s2), tag=13)
+            self.comm.Send(B1, dest=(self.rank - s2), tag=13)
         if self.work1:
             start = 0
             end = m
-            if rank == 0:
+            if self.rank == 0:
                 start = u
-            if rank == e1/m:
+            if self.rank == e1/m:
                 end = e1 % m or m
 
             B1 = np.empty(end-start, complex)
-            comm.Recv(B1, source=(rank + s2), tag=13)
+            self.comm.Recv(B1, source=(self.rank + s2), tag=13)
             B2 = A1[start:end, j]
                 
             v = B2 - B1
-            comm.Send(v, dest=(rank+s2), tag=14)
+            self.comm.Send(v, dest=(self.rank+s2), tag=14)
             A1[start:end,j] -= beta*v
    
         if self.work2:
             start = 0
             end = m
-            if rank == s2:
+            if self.rank == s2:
                 start = u
-            if rank == e2/m :
+            if self.rank == e2/m :
                 end = e2 % m or m
             v = np.empty(end-start,complex)
-            comm.Recv(v, source=(rank - s2), tag=14)
+            self.comm.Recv(v, source=(self.rank - s2), tag=14)
             A2[start:end,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:]]))
             
         return A1, A2
@@ -466,18 +471,18 @@ class ToeplitzFactorizor:
         isZero = False
         X2 = np.zeros(A2[j,:].shape, complex)
         beta = 0
-        if rank==s2:
+        if self.rank==s2:
             if np.all(np.abs(A2[j, :]) < 1e-13):
                 isZero=True
-        isZero = comm.bcast(isZero, root=0)
+        isZero = self.comm.bcast(isZero, root=0)
         if isZero:
             return X2, beta, A1, A2
         
-        if rank == s2:
+        if self.rank == s2:
             sigma = A2[j, :].dot(np.conj(A2[j,:]))
-            comm.send(sigma, dest=0, tag=11)
-        if rank == 0:
-            sigma = comm.recv(source=s2, tag=11)
+            self.comm.send(sigma, dest=0, tag=11)
+        if self.rank == 0:
+            sigma = self.comm.recv(source=s2, tag=11)
             alpha = (A1[j,j]**2 - sigma)**0.5            
             if (np.real(A1[j,j] + alpha) < np.real(A1[j, j] - alpha)):
                 z = A1[j, j]-alpha
@@ -485,15 +490,15 @@ class ToeplitzFactorizor:
             else:
                 z = A1[j, j]+alpha
                 A1[j,j] = -alpha
-            comm.send(z, dest=s2, tag=12)
+            self.comm.send(z, dest=s2, tag=12)
             beta = 2*z*z/(-sigma + z*z)           
             
-        if rank == s2:
-            z = comm.recv(source=0, tag=12)
+        if self.rank == s2:
+            z = self.comm.recv(source=0, tag=12)
             X2 = A2[j,:]/z
             A2[j, :] = X2
-        beta = comm.bcast(beta, root=0)
-        X2 = comm.bcast(X2, root=s2) 
+        beta = self.comm.bcast(beta, root=0)
+        X2 = self.comm.bcast(X2, root=s2) 
 
         return X2, beta, A1, A2
 
