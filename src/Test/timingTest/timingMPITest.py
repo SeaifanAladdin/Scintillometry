@@ -11,11 +11,17 @@ RESULTS = "/results"
 def timeMyMethods(n,m,p, method, num=3):
     from func import createBlockedToeplitz, testFactorization
     import timeit
-    SETUP = """from func import createBlockedToeplitz; from ToeplitzFactorizor import ToeplitzFactorizor;
+    SETUP = """from func import createBlockedToeplitz; from Factorize_parrallel import ToeplitzFactorizor;
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+size  = comm.Get_size()
+rank = comm.Get_rank()
 n = {0}; m = {1}; p = {2};
 method = '{3}';
-T = createBlockedToeplitz(n, m);
-c = ToeplitzFactorizor(T, m);"""
+if rank == 0:
+    T = createBlockedToeplitz(n, m);
+T1 = comm.bcast(T, root=0)[rank*m:(rank+1)*m, :m]
+c = ToeplitzFactorizor(T1);"""
     setup = SETUP.format(n,m,p,method)
     t = timeit.repeat('c.fact(method, p)', setup, number = num)
     return np.mean(t), np.std(t)
@@ -66,11 +72,13 @@ if not os.path.exists(path):
 for method in METHODS:
     if method in METHODS[:5]:
         t, t_err = timeMyMethods(n,m, p, method, num)
+    else:
+        continue
     if method == METHODS[5]:
         t, t_err = timeNumpy(n,m,p,num)
     if method == METHODS[6]:
         t, t_err = timeNiliou(n,m,p, num)
     data[0][-2] = t
     data[0][-1] = t_err
-    with open(path + "/{0}.txt".format(method),'a') as f_handle:
+    with open(path + "/MPI_{0}.txt".format(method),'a') as f_handle:
         np.savetxt(f_handle,data)
