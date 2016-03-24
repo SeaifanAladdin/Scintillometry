@@ -1,5 +1,9 @@
 import os, sys, inspect
 import numpy as np
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+size  = comm.Get_size()
+rank = comm.Get_rank()
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir + "/../../")
@@ -67,7 +71,7 @@ except:
 path = writeTo + RESULTS
 
 data = np.array([[n,m,p,thread, npr, None, None]])
-if not os.path.exists(path):
+if not os.path.exists(path) and rank == 0:
     os.makedirs(path)
     
 
@@ -80,7 +84,8 @@ for method in METHODS:
         t, t_err = timeNumpy(n,m,p,num)
     if method == METHODS[6]:
         t, t_err = timeNiliou(n,m,p, num)
-    data[0][-2] = t
-    data[0][-1] = t_err
-    with open(path + "/MPI_{0}.txt".format(method),'a') as f_handle:
-        np.savetxt(f_handle,data)
+    if rank == 0:
+        data[0][-2] = t
+        data[0][-1] = t_err
+        with open(path + "/MPI_{0}.txt".format(method),'a') as f_handle:
+            np.savetxt(f_handle,data)
