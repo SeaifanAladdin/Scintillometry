@@ -13,6 +13,10 @@ from mpi4py import MPI
 
 
 from scipy import linalg
+from GeneratorBlock import Block
+from GeneratorBlocks import Blocks
+
+from multiprocessing import Pool
 
 
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
@@ -24,11 +28,13 @@ class ToeplitzFactorizor:
         self.rank = self.comm.Get_rank()
         self.T = np.array(T, complex)
         self.npn = T.shape[0]/T.shape[1]
+        
         n = self.npn*size
         
         self.n = n
         m = T.shape[1]
         self.m = m
+        self.blocks = Blocks() 
         self.L = np.zeros((n*m, n*m), complex)
 
         
@@ -45,8 +51,9 @@ class ToeplitzFactorizor:
         A1, A2 = self.__setup_gen(self.T)
 
 
-
-        self.L[npn*self.rank*m:npn*(self.rank + 1)*m,:m] = A1
+        for block in self.blocks:
+             rank = block.rank
+             self.L[rank*m:(rank + 1)*m, :m] = block.A1
             
         for k in range(1,n):
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
@@ -69,18 +76,23 @@ class ToeplitzFactorizor:
     def __setup_gen(self, T):
         n = self.n
         m = self.m
+        
         A1 = np.zeros(T.shape, complex)
         A2 = np.zeros(T.shape, complex)
         cinv = None
         
         ##The root rank will compute the cholesky decomposition
         if self.rank == 0:
-            print T[:m,:m].shape; c = cholesky(T[:m,:m], lower=True)
+            c = cholesky(T[:m,:m], lower=True)
             cinv = inv(np.conj(c.T))
         cinv = self.comm.bcast(cinv, root=0)
+        
         A1= T[:,:].dot(cinv)
+        for i in range(self.npn):
+             b = Block(A1[i*m:(i+1)*m,:], self.rank*self.npn + i)
+             self.blocks.addBlock(b)
+       
         A2 = 1j*A1
-
         ##We are done with T. We shouldn't ever have a reason to use it again
         del self.T
         return A1, A2
@@ -91,14 +103,13 @@ class ToeplitzFactorizor:
         e1 = (n - k - 1)
         s2 = k
         e2 = n
+        self.blocks.updateWork(e1, s2)
         if self.rank <= e1/npn:
             self.work1 = e1 %npn or npn
-            print "work1", self.work1
         else:
             self.work1 = False;
         if self.rank>= s2/npn:
             self.work2 = s2 %npn or npn
-            print "work2", self.work2
         else:
             self.work2 = False
         return s1, e1, s2, e2
@@ -359,6 +370,45 @@ class ToeplitzFactorizor:
         return A1, A2
 
     def __seq_update(self, A1, A2, X2, beta, e1, e2, s2, j, m, n):
+        def seq(b):
+        	
+             if b.work2 == True:
+                  B1 = b.A2.dot(np.conj(X2.T))
+                  start,end  = 0,m
+                  if b.rank == s2:
+                       start = u
+                  if b.rank == e2/m:
+                       end = e2%m or m
+                  B1 = B1[start:end]
+                  new_rank = (b.rank - s2)/npn
+                  self.comm.Send(B1, dest=new_rank, tag=13) 
+             if b.work1 == True:
+                  start,end  = 0,m
+                  if b.rank == 0:
+                       start = u
+                  if b.rank == e1/m:
+                       end = e1%m or m
+                      
+                  new_rank = (b.rank + s2)/npn
+                  B1 = np.empty(end - start, complex)
+                  print "work1", self.rank, b.rank, new_rank
+                  self.comm.Recv(B1, source=new_rank, tag=13)
+                  B2 = b.A1[start:end, j]
+                  v = B2 - B1
+                 
+                  self.comm.Send(v, dest=new_rank, tag=14)
+                  b.A1[start:end,j] -= beta*v
+             if b.work2 == True:
+                 start,end  = 0,m
+                 if b.rank == s2:
+                      start = u
+                 if b.rank == e2/m:
+                      end = e2%m or m
+                 new_rank = (b.rank - s2)/npn
+                 v = np.empty(end-start,complex)
+                 self.comm.Recv(v, source=new_rank, tag=14)
+                 b.A2[start:end,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:]]))
+        
         #X2 = np.array([X2])
         npn = self.npn
         offset = (s2 % npn)*m
@@ -368,48 +418,11 @@ class ToeplitzFactorizor:
         u1 = j1 + 1
         npn = self.npn
 
-        nru = e1*m - (s2*m + j + 1)
-        if self.work2:
-            B1 = A2.dot(np.conj(X2.T))
-            start = 0
-            end = npn*m
-            if self.rank == s2/npn:
-                start = u1
-            if self.rank == e2/(npn*m):
-                end = e2 % npn*m or npn*m
-            B1 = B1[start:end]
-            
-            self.comm.Send(B1, dest=(self.rank - s2/npn), tag=13)
+        nru = e1 - (s2*m + j + 1)
+        pool = Pool(processes=npn)
+        pool.map(seq, self.blocks.blocks)
         
-        if self.work1:
-            start = 0
-            end = npn*m
-            if self.rank == 0:
-                start = u
-            if self.rank == e1/(m*npn):
-                end = e1 % npn*m or npn*m
-            B1 = np.empty(end-start, complex)
-            print (self.rank - s2/npn)
-            self.comm.Recv(B1, source=(self.rank + s2/npn), tag=13)
-            B2 = A1[start:end, j]
-                
-            v = B2 - B1
-            self.comm.Send(v, dest=(self.rank+s2/npn), tag=14)
-            A1[start:end,j] -= beta*v
-        
-
-        
-        if self.work2:
-            start = 0
-            end = npn*m
-            if self.rank == s2/npn:
-                start = u1
-            if self.rank == e2/(npn*m) :
-                end = e2 % npn*m or npn*m
-            v = np.empty(end-start,complex)
-            self.comm.Recv(v, source=(self.rank - s2/npn), tag=14)
-            A2[start:end,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:]]))
-
+       
         return A1, A2
 
     def __house_vec(self, A1, A2, j, s2):
@@ -419,34 +432,39 @@ class ToeplitzFactorizor:
         j1 = j+ offset
 
         isZero = False
-        X2 = np.zeros(A2[j1,:m].shape, complex)
+        X2 = np.zeros(A2[j,:m].shape, complex)
         beta = 0
-        if self.rank==s2/npn:
-            if np.all(np.abs(A2[j1, :m]) < 1e-13):
+        blocks = self.blocks
+        blockS2 = blocks.getBlock(s2)
+        block0 = blocks.getBlock(0)
+        if blockS2 != None:
+            if np.all(np.abs(blockS2.A2[j, :m]) < 1e-13):
                 isZero=True
-        isZero = self.comm.bcast(isZero, root=0)
+        isZero = self.comm.bcast(isZero, root=s2/npn)
         if isZero:
             return X2, beta, A1, A2
-        
-        if self.rank == s2/npn:
-            sigma = A2[j1, :m].dot(np.conj(A2[j1,:m]))
+        if blockS2 != None:
+            A2 = blockS2.A2
+            sigma = A2[j, :m].dot(np.conj(A2[j,:m]))
             self.comm.send(sigma, dest=0, tag=11)
-        if self.rank == 0:
+        if block0 != None:
             sigma = self.comm.recv(source=s2/npn, tag=11)
-            alpha = (A1[j1,j]**2 - sigma)**0.5            
-            if (np.real(A1[j1,j] + alpha) < np.real(A1[j1, j] - alpha)):
-                z = A1[j1, j]-alpha
-                A1[j1,j] = alpha 
+            A1 = block0.A1
+            alpha = (A1[j,j]**2 - sigma)**0.5            
+            if (np.real(A1[j,j] + alpha) < np.real(A1[j, j] - alpha)):
+                z = A1[j, j]-alpha
+                A1[j,j] = alpha 
             else:
-                z = A1[j1, j]+alpha
-                A1[j1,j] = -alpha
+                z = A1[j, j]+alpha
+                A1[j,j] = -alpha
             self.comm.send(z, dest=s2/npn, tag=12)
             beta = 2*z*z/(-sigma + z*z)           
             
-        if self.rank == s2/npn:
+        if blockS2 != None:
             z = self.comm.recv(source=0, tag=12)
-            X2 = A2[j1,:]/z
-            A2[j1, :] = X2
+            A2 = blockS2.A2
+            X2 = A2[j,:]/z
+            A2[j, :] = X2
         beta = self.comm.bcast(beta, root=0)
         X2 = self.comm.bcast(X2, root=s2/npn) 
 
