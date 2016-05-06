@@ -22,14 +22,15 @@ def log(message):
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
-    def __init__(self, T, m):
+    def __init__(self, T, m, pad):
         ## m = size of block matrices
         N = T.shape[0]
-        self.m = m
+        self.m = m*(1 + pad)
         if N % m != 0:
             raise InvalidToeplitzBlockSize(N, m) 
-        self.L = np.zeros((N,N), complex)
+        self.L = np.zeros((N*(1 + pad),N*(1 + pad)), complex)
         self.T = np.array(T, complex)
+	self.pad = pad
 
     def fact(self, method, p):
         if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
@@ -44,12 +45,12 @@ class ToeplitzFactorizor:
         #log(A1)
         #log("")
         #log(A2)
-        self.L[:, :m] = A1
+        self.L[:m*n, :m] = A1[:m*n, :m]
         #log("")
         #log("")
         #log(self.L)
 
-        for k in range(1,n):
+        for k in range(1,n*(1 + pad)):
             #log("")
             #log("k = " + str(k))
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
@@ -62,7 +63,8 @@ class ToeplitzFactorizor:
             else:
                 A1, A2 = self.__block_reduc(A1, A2, s1, e1, s2, e2, m, p, method)
             
-            self.L[k*m:e2, k*m:(k + 1)*m]  = A1[:e1, :]
+            c = min(n+k, n*(1 + pad))
+            self.L[k*m:c*m, k*m:(k + 1)*m]  = A1[:e1, :]
             #log("new L at step k = \n{0}".format(self.L))
         
 
@@ -73,9 +75,9 @@ class ToeplitzFactorizor:
     def __setup_gen(self, T, m):
         m = T.shape[1]
         n = T.shape[0]/m
-        A1 = np.zeros(T.shape, complex)
-        A2 = np.zeros(T.shape, complex)
-        A1 = T.copy()
+        A1 = np.zeros((m*n*(1 + pad), m), complex)
+        A2 = np.zeros((m*n*(1 + pad), m), complex)
+        A1[:m*n,:] = T.copy()
         
         c = cholesky(A1[:m,:m], lower=True) 
         A1[:m, :m] = c.copy()
@@ -86,9 +88,9 @@ class ToeplitzFactorizor:
 
     def __set_curr_gen(self, k, n, m):
         s1 = 0
-        e1 = (n - k)*m
+        e1 = min(n*m, (n*(1 + self.pad) - k)*m)
         s2 = k*m
-        e2 = n*m
+        e2 = e1 + s2
         return s1, e1, s2, e2
 
     def __block_reduc(self, A1, A2, s1, e1, s2, e2, m, p, method):
@@ -290,7 +292,6 @@ class ToeplitzFactorizor:
         ##log("A2[u2:e2, :] = " + str(A2[u2:e2, :])
         ##log("X2 = " + str(X2)
         ##log("X2.T = " + str(X2.T)
-
         v[:nru] = A1[u1:e1, j1] - A2[u2:e2, :].dot(np.conj(X2.T))
         #log("v = {0}".format(v[:nru]))
         A1[u1:e1, j1] = A1[u1:e1, j1] - beta*v[:nru]
@@ -332,7 +333,7 @@ class ToeplitzFactorizor:
 
 if __name__=="__main__":
     np.random.seed(20)
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         print "Please pass in the following arguments: method n m p"
     else:
         from func import createBlockedToeplitz, testFactorization
@@ -340,10 +341,17 @@ if __name__=="__main__":
         m = int(sys.argv[3])
         method = sys.argv[1]
         p = int(sys.argv[4])
+        pad = bool(sys.argv[5])
         T = createBlockedToeplitz(n, m)
-        c = ToeplitzFactorizor(T, m)
+        c = ToeplitzFactorizor(T, m, pad)
         L = c.fact(method, p)
-        if not testFactorization(T, L):
-            print "L error"
+        print np.max(np.abs(L.dot(np.conj(L.T))[m*n:2*m*n,m*n:2*m*n] - T))
+	import matplotlib.pyplot as plt
+	plt.subplot(1,2,1)
+        plt.imshow(np.abs(T)**0.5)
+        plt.subplot(1,2,2)
+        plt.imshow(np.abs(L.dot(np.conj(L.T)))**0.5)
+	plt.show()
+
 
     
