@@ -289,36 +289,48 @@ class ToeplitzFactorizor:
 
         def yty2():
             invT = S
-
-            if self.rank >= s2:
-                s = 0
-                if self.rank == s2:
+            for b in self.blocks:
+                if b.work2 == None: 
+                    continue
+                s = 0 
+                if b.rank == s2:
                     s = u1
+                A2 = b.getA2()
                 B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
-                self.comm.Send(B2, dest=(self.rank- s2), tag=15)
-                M = np.empty((m - s, p_eff), complex)
+                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                del A2
                 
-                self.comm.Recv(M, source=(self.rank - s2), tag=16)
-                A2[s:, :m] = A2[s:,:m] + M.dot(X2)
-            if self.rank<=e1:
+            for b in self.blocks:
+                if b.work1 == None: continue
                 s = 0
-                if self.rank == 0:
-                    s = u1
+                if b.rank == 0:
+                    s=u1
+                A1 = b.getA1()
                 B1 = A1[s:, sb1:eb1]
-                
                 B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=(self.rank + s2), tag=15)
+                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
                 M = B1 - B2
                 M = M.dot(inv(invT[:p_eff,:p_eff]))
-                self.comm.Send(M, dest=(self.rank + s2), tag=16)
-
+                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
-            
-            return A1, A2
+                del A1   
+            for b in self.blocks:
+                if b.work2 == None: 
+                    continue
+                s = 0 
+                if b.rank == s2:
+                    s = u1
+                M = np.empty((m - s, p_eff), complex)
+                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                
+                A2 = b.getA2()
+                A2[s:, :m] = A2[s:,:m] + M.dot(X2)
+                del A2 
+            return 
         
         
         m = self.m
-       
+        n = self.n
         nru = e1*m - u1
         p_eff = eb1 - sb1 
         num = self.numOfBlocks
