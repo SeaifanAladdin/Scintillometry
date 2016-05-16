@@ -318,7 +318,7 @@ class ToeplitzFactorizor:
         
         
         m = self.m
-        n = self.n
+       
         nru = e1*m - u1
         p_eff = eb1 - sb1 
         num = self.numOfBlocks
