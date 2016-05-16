@@ -202,32 +202,45 @@ class ToeplitzFactorizor:
            
         def wy2():
             W1, W2 = S
-            if p_eff == 0: return A1, A2
-            if self.rank >= s2:
-                    s = 0
-                    if self.rank == s2:
-                        s = u1
-                    B2 = A2[s:, :m].dot(np.conj(W2[:m,:p_eff]))
-                    self.comm.Send(B2, dest=(self.rank- s2), tag=15)
-                    M = np.empty((m - s, p_eff), complex)
-                    
-                    self.comm.Recv(M, source=(self.rank - s2), tag=16)
-
-
-                    A2[s:, :m] = A2[s:,:m] + M.dot(X2)
-            if self.rank<=e1:
-                s = 0
-                if self.rank == 0:
+            if p_eff == 0: return
+            for b in self.blocks:
+                if b.work2 == None: 
+                    continue
+                s = 0 
+                if b.rank == s2:
                     s = u1
-                B1 = A1[s:, sb1:eb1].dot(W1[sb1:eb1, :p_eff])
-                
-                B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=(self.rank + s2), tag=15)
-                M = B1 - B2
-                self.comm.Send(M, dest=(self.rank + s2), tag=16)
-                A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
+                A2 = b.getA2()
+                B2 = A2[s:, :m].dot(np.conj(W2[:m,:p_eff])) 
+                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                del A2
 
-            return A1, A2     
+            for b in self.blocks:
+                if b.work1 == None: continue
+                s = 0
+                if b.rank == 0:
+                    s=u1
+                A1 = b.getA1()
+                B1 = B1 = A1[s:, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) 
+                B2 = np.empty((m - s, p_eff), complex)
+                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
+                M = B1 - B2
+                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
+                A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
+                del A1          
+   
+
+            for b in self.blocks:
+                if b.work2 == None: 
+                    continue
+                s = 0 
+                if b.rank == s2:
+                    s = u1
+                M = np.empty((m - s, p_eff), complex)
+                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                A2 = b.getA2()
+                A2[s:, :m] = A2[s:,:m] + M.dot(X2)
+                del A2 
+            return 
 
 
         def yty1():
