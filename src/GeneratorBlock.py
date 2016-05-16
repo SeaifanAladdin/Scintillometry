@@ -13,8 +13,8 @@ class Block:
 		self.work2 = work2
 		
 	def setWork(self, work1, work2):
-		self.Work1(work1)
-		self.Work2(work2)
+		self.setWork1(work1)
+		self.setWork2(work2)
 	
 	def getWork(self):
 		return self.work1(), self.work2()
