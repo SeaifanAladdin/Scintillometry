@@ -8,10 +8,6 @@ class Blocks:
 	def addBlock(self, block):
 		self.blocks.append(block)
 				
-	def updateWork(self, e1, s2):
-		 for b in self:
-		 	rank = b.rank
-		 	b.setWork(rank <= e1, rank >= s2)
 		 	
 	def hasRank(self, rank):
 		for b in self:
@@ -23,8 +19,13 @@ class Blocks:
 			if b.rank == rank:
 				return b
 		return None
-		
-
+	
+	def numOfWork1(self):
+		counter = 0
+		for b in self:
+ 			if b.getWork1() != None:
+				counter += 1
+		return counter
 	def __iter__(self):
 		self.currPos=len(self.blocks)
 		return self
