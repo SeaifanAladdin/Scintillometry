@@ -21,14 +21,12 @@ from GeneratorBlock import Block
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
-    def __init__(self, T, pad):
+    def __init__(self,n,m, pad):
         self.comm = MPI.COMM_WORLD
         size  = self.comm.Get_size()
+        self.size = size
         self.rank = self.comm.Get_rank()
-        self.T = np.array(T, complex)
-        n = size
         self.n = n
-        m = len(T)
         self.m = m
         self.pad = pad
         self.L = np.zeros((n*m*(1 + pad), n*m*(1 + pad)), complex)
@@ -38,19 +36,20 @@ class ToeplitzFactorizor:
         self.numOfBlocks = n*(1 + pad)
         
         
-        
-
-        
+    def addBlock(self, T, rank):
+       	b = Block(T, rank)
+       	self.blocks.addBlock(b)        
 
     def fact(self, method, p):
         if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
             raise InvalidMethodException(method)
         if p < 1 and method != SEQ:
             raise InvalidPException(p)
+        
         pad = self.pad
         m = self.m
         n = self.n
-        self.__setup_gen(self.T)
+        self.__setup_gen()
         
 
         for b in self.blocks:
@@ -79,7 +78,7 @@ class ToeplitzFactorizor:
             return self.L
 
     ##Private Methods
-    def __setup_gen(self, T):
+    def __setup_gen(self):
         n = self.n
         m = self.m
         pad = self.pad
@@ -88,18 +87,19 @@ class ToeplitzFactorizor:
         cinv = None
         
         ##The root rank will compute the cholesky decomposition
-        if self.rank == 0:
-            c = cholesky(T, lower=False)
+        if self.blocks.hasRank(0) :
+            c = cholesky(self.blocks.getBlock(0).T, lower=False)
             cinv = inv(c)
         cinv = self.comm.bcast(cinv, root=0)
-        A1= T.dot(cinv)
-        b = Block(A1, self.rank)
-        self.blocks.addBlock(b)
+        for b in self.blocks:
+        	b.createA(b.T.dot(cinv))
         if pad:
-        	self.blocks.addBlock(Block(np.zeros((m,m), complex), self.rank + n))
+        	for b in self.blocks:
+        		b2 = Block(None, b.rank + n)
+        		b2.createA(np.zeros((m,m), complex))
+        		self.blocks.addBlock(b2)
 
         ##We are done with T. We shouldn't ever have a reason to use it again
-        del self.T
         return A1, A2
 
     def __set_curr_gen(self, k, n):
@@ -168,7 +168,7 @@ class ToeplitzFactorizor:
                     s = u1
                 A2 = b.getA2()
                 B2 = A2[s:, :m].dot(np.conj(X2)[:p_eff,:m].T)    
-                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                self.comm.Send(B2, dest=b.getWork2()%self.size, tag=3*num + b.getWork2())
                 del A2
 
                     
@@ -180,9 +180,9 @@ class ToeplitzFactorizor:
                 A1 = b.getA1()
                 B1 = A1[s:, sb1:eb1]    
                 B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
+                self.comm.Recv(B2, source=b.getWork1()%self.size, tag=3*num + b.rank)  
                 M = B1 - B2
-                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
+                self.comm.Send(M, dest=b.getWork1()%self.size, tag=4*num + b.rank)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M.dot(Y1[sb1:eb1, :p_eff].T) 
                 del A1
 
@@ -193,7 +193,7 @@ class ToeplitzFactorizor:
                 if b.rank == s2:
                     s = u1
                 M = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                self.comm.Recv(M, source=b.getWork2()%self.size, tag=4*num + b.getWork2())
                 A2 = b.getA2()
                 A2[s:, :m] = A2[s:,:m] + M.dot(Y2[:m, :p_eff].T)
                 del A2
@@ -211,7 +211,7 @@ class ToeplitzFactorizor:
                     s = u1
                 A2 = b.getA2()
                 B2 = A2[s:, :m].dot(np.conj(W2[:m,:p_eff])) 
-                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                self.comm.Send(B2, dest=b.getWork2()%self.size, tag=3*num + b.getWork2())
                 del A2
 
             for b in self.blocks:
@@ -222,9 +222,9 @@ class ToeplitzFactorizor:
                 A1 = b.getA1()
                 B1 = B1 = A1[s:, sb1:eb1].dot(W1[sb1:eb1, :p_eff]) 
                 B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
+                self.comm.Recv(B2, source=b.getWork1()%self.size, tag=3*num + b.rank)  
                 M = B1 - B2
-                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
+                self.comm.Send(M, dest=b.getWork1()%self.size, tag=4*num + b.rank)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
                 del A1          
    
@@ -236,7 +236,7 @@ class ToeplitzFactorizor:
                 if b.rank == s2:
                     s = u1
                 M = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                self.comm.Recv(M, source=b.getWork2()%self.size, tag=4*num + b.getWork2())
                 A2 = b.getA2()
                 A2[s:, :m] = A2[s:,:m] + M.dot(X2)
                 del A2 
@@ -253,7 +253,7 @@ class ToeplitzFactorizor:
                     s = u1
                 A2 = b.getA2()
                 B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
-                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                self.comm.Send(B2, dest=b.getWork2()%self.size, tag=3*num + b.getWork2())
                 del A2
                 
             for b in self.blocks:
@@ -264,10 +264,10 @@ class ToeplitzFactorizor:
                 A1 = b.getA1()
                 B1 = A1[s:, sb1:eb1]
                 B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
+                self.comm.Recv(B2, source=b.getWork1()%self.size, tag=3*num + b.rank)  
                 M = B1 - B2
                 M = M.dot(T[:p_eff,:p_eff])
-                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
+                self.comm.Send(M, dest=b.getWork1()%self.size, tag=4*num + b.rank)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
                 del A1                  
 
@@ -278,7 +278,7 @@ class ToeplitzFactorizor:
                 if b.rank == s2:
                     s = u1
                 M = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                self.comm.Recv(M, source=b.getWork2()%self.size, tag=4*num + b.getWork2())
                 
                 A2 = b.getA2()
                 A2[s:, :m] = A2[s:,:m] + M.dot(X2)
@@ -297,7 +297,7 @@ class ToeplitzFactorizor:
                     s = u1
                 A2 = b.getA2()
                 B2 = A2[s:, :m].dot(np.conj(X2[:p_eff, :m]).T)
-                self.comm.Send(B2, dest=b.getWork2()%n, tag=3*num + b.getWork2())
+                self.comm.Send(B2, dest=b.getWork2()%self.size, tag=3*num + b.getWork2())
                 del A2
                 
             for b in self.blocks:
@@ -308,10 +308,10 @@ class ToeplitzFactorizor:
                 A1 = b.getA1()
                 B1 = A1[s:, sb1:eb1]
                 B2 = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(B2, source=b.getWork1()%n, tag=3*num + b.rank)  
+                self.comm.Recv(B2, source=b.getWork1()%self.size, tag=3*num + b.rank)  
                 M = B1 - B2
                 M = M.dot(inv(invT[:p_eff,:p_eff]))
-                self.comm.Send(M, dest=b.getWork1()%n, tag=4*num + b.rank)
+                self.comm.Send(M, dest=b.getWork1()%self.size, tag=4*num + b.rank)
                 A1[s:, sb1:eb1] = A1[s:, sb1:eb1] + M
                 del A1   
             for b in self.blocks:
@@ -321,7 +321,7 @@ class ToeplitzFactorizor:
                 if b.rank == s2:
                     s = u1
                 M = np.empty((m - s, p_eff), complex)
-                self.comm.Recv(M, source=b.getWork2()%n, tag=4*num + b.getWork2())
+                self.comm.Recv(M, source=b.getWork2()%self.size, tag=4*num + b.getWork2())
                 
                 A2 = b.getA2()
                 A2[s:, :m] = A2[s:,:m] + M.dot(X2)
@@ -442,7 +442,7 @@ class ToeplitzFactorizor:
             if b.rank == e2/m:
                 end = e2 % m or m
             B1 = B1[start:end]
-            self.comm.Send(B1, dest=b.getWork2()%n, tag=4*num + b.getWork2())
+            self.comm.Send(B1, dest=b.getWork2()%self.size, tag=4*num + b.getWork2())
 
         
         for b in self.blocks:
@@ -456,12 +456,12 @@ class ToeplitzFactorizor:
 
             B1 = np.empty(end-start, complex)
             
-            self.comm.Recv(B1, source=b.getWork1()%n, tag=4*num + b.rank)
+            self.comm.Recv(B1, source=b.getWork1()%self.size, tag=4*num + b.rank)
             A1 = b.getA1()
             B2 = A1[start:end, j]
                 
             v = B2 - B1
-            self.comm.Send(v, (b.getWork1())%n, 5*num + b.getWork1())
+            self.comm.Send(v, (b.getWork1())%self.size, 5*num + b.getWork1())
             A1[start:end,j] -= beta*v
             del A1
 
@@ -475,7 +475,7 @@ class ToeplitzFactorizor:
             if b.rank == e2/m :
                 end = e2 % m or m
             v = np.empty(end-start,complex)
-            self.comm.Recv(v, source=b.getWork2()%n, tag=5*num + b.rank)
+            self.comm.Recv(v, source=b.getWork2()%self.size, tag=5*num + b.rank)
             A2 = b.getA2()
             A2[start:end,:] -= beta*v[np.newaxis].T.dot(np.array([X2[:]]))
             del A2
@@ -492,7 +492,7 @@ class ToeplitzFactorizor:
             if np.all(np.abs(A2[j, :]) < 1e-13):
                 isZero=True
             del A2
-        isZero = self.comm.bcast(isZero, root=s2%n)
+        isZero = self.comm.bcast(isZero, root=s2%self.size)
         if isZero:
             return X2, beta
         
@@ -503,7 +503,7 @@ class ToeplitzFactorizor:
             del A2
         if blocks.hasRank(0):
             A1 = blocks.getBlock(0).getA1()
-            sigma = self.comm.recv(source=s2%n, tag=2*num + s2)
+            sigma = self.comm.recv(source=s2%self.size, tag=2*num + s2)
             alpha = (A1[j,j]**2 - sigma)**0.5            
             if (np.real(A1[j,j] + alpha) < np.real(A1[j, j] - alpha)):
                 z = A1[j, j]-alpha
@@ -511,7 +511,7 @@ class ToeplitzFactorizor:
             else:
                 z = A1[j, j]+alpha
                 A1[j,j] = -alpha
-            self.comm.send(z, dest=s2%n, tag=3*num + s2)
+            self.comm.send(z, dest=s2%self.size, tag=3*num + s2)
             beta = 2*z*z/(-sigma + z*z)           
             del A1
             
@@ -522,7 +522,7 @@ class ToeplitzFactorizor:
             A2[j, :] = X2
             del A2
         beta = self.comm.bcast(beta, root=0)
-        X2 = self.comm.bcast(X2, root=s2%n) 
+        X2 = self.comm.bcast(X2, root=s2%self.size) 
         return X2, beta
 
 if __name__=="__main__":

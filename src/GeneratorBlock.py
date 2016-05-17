@@ -1,11 +1,13 @@
 import numpy as np
 class Block:
-	def __init__(self, A1, rank):
-		self.A1 = A1
-		self.A2 = 1j*A1
+	def __init__(self, T, rank):
+		self.T = T
 		self.work1 = None
 		self.work2 = None
 		self.rank = rank
+	def createA(self, A1):
+		self.A1 = A1
+		self.A2 = 1j*A1
 		
 	def setWork1(self, work1 = None):
 		self.work1 = work1
@@ -30,3 +32,5 @@ class Block:
     
 	def getA2(self):
 		return self.A2
+	def getT(self):
+		return self.T

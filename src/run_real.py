@@ -11,15 +11,15 @@ rank = comm.Get_rank()
 
 FILE = "gb057_1.input_baseline258_freq_03_pol_all.rebint.1.rebined"
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 6:
 	if rank==0:
-		print "Please pass in the following arguments: method m p pad"
+		print "Please pass in the following arguments: method n m p pad"
 else:
-	n = size
-	m = int(sys.argv[2])
+	n = int(sys.argv[2])
+	m = int(sys.argv[3])
 	method = sys.argv[1]
-	p = int(sys.argv[3])
-	pad = sys.argv[4] == "1" or sys.argv[4] == "True"
+	p = int(sys.argv[4])
+	pad = sys.argv[5] == "1" or sys.argv[5] == "True"
 
 	file = "gate0_numblock_{}_meff_{}_offsetn_100_offsetm_100.dat".format(n, m*4)
 	folder = "processedData"
@@ -49,12 +49,13 @@ else:
 		#plt.imshow(np.abs(toeplitz))
 		#plt.show()
 		
-
-	toeplitz = comm.bcast(toeplitz, root=0)
-	T = toeplitz[:2*m, 2*(rank)*m:2*(rank + 1)*m]
-	T = np.conj(T.T)
-	#c = ToeplitzFactorizor(T, 2*m, pad)
-	c = ToeplitzFactorizor(T)
+	toeplitz = comm.bcast(toeplitz, root=0)	
+	c = ToeplitzFactorizor(n,2*m, pad)
+	for i in range(0, n//size):
+		T = toeplitz[:2*m, 2*(rank+ i*size)*m:2*(rank + 1 + i*size)*m]
+		T = np.conj(T.T)
+		c.addBlock(T, rank + i*size)
+	
 	L = c.fact(method, p)
 	
         #print np.max(np.abs(L.dot(np.conj(L.T))[0*m*n:2*m*n,:2*m*n] - T))
@@ -67,7 +68,7 @@ else:
 			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))[2*m*n:2*2*m*n, 2*m*n:2*2*m*n]))
 		else:
 			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))))
-		
+		print L.shape
 		plt.colorbar()
 		plt.title("Errors on the Toeplitz Matrix")
 		plt.subplot(1,2,2)
