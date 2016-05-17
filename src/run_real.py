@@ -31,12 +31,16 @@ else:
 	toeplitz=None
 	if rank==0:
 		toeplitz1 = np.memmap("{0}/{1}".format(folder,file), dtype='complex', mode='r', shape=(4*m,4*n*m), order='F')
-		toeplitz = np.zeros((2*m*n, 2*n*m), complex)
+		toeplitz = np.zeros((2*m*n*(1 + pad), 2*n*m*(1 + pad)), complex)
 	
 	
 		for i in range(0,2*n,2):
 			T_temp = toeplitz1[:2*m, 2*i*m:2*(i + 1)*m].copy()
 			toeplitz[:2*m, (i/2)*2*m:2*(i/2 + 1)*m] = T_temp
+		if pad:
+			T_temp = np.zeros((2*m,2*m),complex)
+			for i in range(0, n):
+				toeplitz[:2*m, (i + n)*2*m: 2*(i + 1 + n)*m] = T_temp
 
 		for i in range(0,n):
 			T_temp = toeplitz[:2*m,2*i*m:2*(i+1)*m]
@@ -68,7 +72,6 @@ else:
 			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))[2*m*n:2*2*m*n, 2*m*n:2*2*m*n]))
 		else:
 			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))))
-		print L.shape
 		plt.colorbar()
 		plt.title("Errors on the Toeplitz Matrix")
 		plt.subplot(1,2,2)
