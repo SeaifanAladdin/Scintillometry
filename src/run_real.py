@@ -42,16 +42,20 @@ else:
 			for i in range(0, n):
 				toeplitz[:2*m, (i + n)*2*m: 2*(i + 1 + n)*m] = T_temp
 
-		for i in range(0,n):
+		for i in range(0,n*(1 + pad)):
 			T_temp = toeplitz[:2*m,2*i*m:2*(i+1)*m]
-			for j in range(0,n - i):
+			for j in range(0,n*(1 + pad) - i):
 				k = j + i
 				toeplitz[2*j*m:2*(j+1)*m,2*k*m:2*(k+1)*m] = T_temp
 				toeplitz[2*k*m:2*(k+1)*m, 2*j*m:2*(j+1)*m] = np.conj(T_temp.T)
 		
- 		#plt.subplot(1,2,1)
-		#plt.imshow(np.abs(toeplitz))
-		#plt.show()
+		plt.imshow(np.abs(toeplitz))
+		plt.colorbar()
+		if not pad:
+			plt.title("Toeplitz matrix with np = {0}, n = {1}, m = {2}".format(size, n, m*2))
+		else:
+			plt.title("Zero padded Toeplitz matrix with np = {0}, n = {1}, m = {2}".format(size, n, m*2))
+		plt.show()
 		
 	toeplitz = comm.bcast(toeplitz, root=0)	
 	c = ToeplitzFactorizor(n,2*m, pad)
@@ -69,7 +73,7 @@ else:
 		npL = cholesky(toeplitz, True)
 		plt.subplot(1,2,1)
 		if pad:
-			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))[2*m*n:2*2*m*n, 2*m*n:2*2*m*n]))
+			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))))
 		else:
 			plt.imshow(np.abs(toeplitz - L.dot(np.conj(L.T))))
 		plt.colorbar()
