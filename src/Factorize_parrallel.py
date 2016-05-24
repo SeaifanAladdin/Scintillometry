@@ -21,7 +21,7 @@ from GeneratorBlock import Block
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
-    def __init__(self,n,m, pad):
+    def __init__(self, folder, n,m, pad):
         self.comm = MPI.COMM_WORLD
         size  = self.comm.Get_size()
         self.size = size
@@ -29,16 +29,53 @@ class ToeplitzFactorizor:
         self.n = n
         self.m = m
         self.pad = pad
-        self.L = np.zeros((n*m*(1 + pad), n*m*(1 + pad)), complex)
-        
+        self.folder = folder
         self.blocks = Blocks()
         
         self.numOfBlocks = n*(1 + pad)
         
+        kCheckpoint = 0 #0 = no checkpoint
         
-    def addBlock(self, T, rank):
-       	b = Block(T, rank)
-       	self.blocks.addBlock(b)        
+        if os.path.exists("processedData/" + folder + "/checkpoint"):
+            for k in range(n*(1 + self.pad) - 1, 0, -1):
+                if os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
+                    path, dirs, files = os.walk("processedData/{0}/checkpoint/{1}/".format(folder, k)).next()
+                    file_count = len(files)
+                    if file_count == 2*self.numOfBlocks:
+                        kCheckpoint = k 
+                        if self.rank == 0: print "Using Checkpoint #{0}".format(k)
+                        break
+        else:
+            os.makedirs("processedData/{0}/checkpoint/".format(folder))
+        self.kCheckpoint = kCheckpoint
+        
+        if not os.path.exists("results"):
+            os.makedirs("results")
+        if not os.path.exists("results/{0}".format(folder)):
+            os.makedirs("results/{0}".format(folder))   
+        
+    def addBlock(self, rank):
+    	folder = self.folder
+    	b = Block(rank)
+    	k = self.kCheckpoint
+    	
+    	if k!= 0:
+    		A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, rank))
+    		A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, rank))
+    		b.setA1(A1)
+    		b.setA2(A2)
+    		if self.pad:
+    		    A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, self.n + rank))
+    		    A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, self.n + rank))
+    		    b2 = Block(rank + self.n)
+                b2.setA1(A1)
+                b2.setA2(A2)
+                self.blocks.addBlock(b2)
+    	else:						
+    		T = np.load("processedData/{0}/{1}.npy".format(folder,rank))
+    		b.setT(T)
+       	self.blocks.addBlock(b)       
+       	return 
 
     def fact(self, method, p):
         if method not in np.array([SEQ, WY1, WY2, YTY1, YTY2]):
@@ -46,17 +83,21 @@ class ToeplitzFactorizor:
         if p < 1 and method != SEQ:
             raise InvalidPException(p)
         
+        
         pad = self.pad
         m = self.m
         n = self.n
-        self.__setup_gen()
+        
+        folder = self.folder
+        
+        if self.kCheckpoint==0:
+            self.__setup_gen()
         
 
-        for b in self.blocks:
-            self.L[b.rank*m:(b.rank + 1)*m,:m] = b.getA1()
+            for b in self.blocks:
+                np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
         
-            
-        for k in range(1,n*(1 + pad)):
+        for k in range(self.kCheckpoint + 1,n*(1 + pad)):
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
             s1, e1, s2, e2 = self.__set_curr_gen(k, n)
             if method==SEQ:
@@ -66,16 +107,17 @@ class ToeplitzFactorizor:
                 self.__block_reduc(s1, e1, s2, e2, m, p, method)
                 
             for b in self.blocks:
+                ##Creating Checkpoint
+                if not os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
+                    try:
+                        os.makedirs("processedData/{0}/checkpoint/{1}/".format(folder, k))
+                    except: pass
+                A1 = np.save("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, b.rank), b.getA1())
+                A2 = np.save("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, b.rank), b.getA2())
+                ##Saving L
                 if b.rank <=e1:
-                    self.L[(b.rank + k)*m:(b.rank + k + 1)*m, k*m:(k + 1)*m]  = b.getA1()
+                	np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
 
-            
-        L = self.L
-        L_temp = np.array(self.comm.gather(L, root=0))
-        
-        if self.rank == 0:
-            self.L = np.sum(L_temp, 0)
-            return self.L
 
     ##Private Methods
     def __setup_gen(self):
@@ -88,18 +130,22 @@ class ToeplitzFactorizor:
         
         ##The root rank will compute the cholesky decomposition
         if self.blocks.hasRank(0) :
-            c = cholesky(self.blocks.getBlock(0).T, lower=False)
+            c = cholesky(self.blocks.getBlock(0).getT(), lower=False)
             cinv = inv(c)
         cinv = self.comm.bcast(cinv, root=0)
         for b in self.blocks:
-        	b.createA(b.T.dot(cinv))
+        	b.createA(b.getT().dot(cinv))
         if pad:
         	for b in self.blocks:
-        		b2 = Block(None, b.rank + n)
+        		b2 = Block(b.rank + n)
         		b2.createA(np.zeros((m,m), complex))
         		self.blocks.addBlock(b2)
-
+        		
         ##We are done with T. We shouldn't ever have a reason to use it again
+        for b in self.blocks:
+            b.deleteT()
+
+        
         return A1, A2
 
     def __set_curr_gen(self, k, n):

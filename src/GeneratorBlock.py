@@ -1,13 +1,26 @@
 import numpy as np
 class Block:
-	def __init__(self, T, rank):
-		self.T = T
+	def __init__(self, rank):
 		self.work1 = None
 		self.work2 = None
 		self.rank = rank
+		self.T = None
+		
+	def setT(self, T):
+		self.T = T
+		
+	def deleteT(self):
+		del self.T
+		
 	def createA(self, A1):
 		self.A1 = A1
 		self.A2 = 1j*A1
+		
+	def setA1(self, A1):
+		self.A1 = A1
+		
+	def setA2(self, A2):
+		self.A2 = A2
 		
 	def setWork1(self, work1 = None):
 		self.work1 = work1
