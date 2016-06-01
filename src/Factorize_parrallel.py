@@ -1,7 +1,8 @@
 ##Give Credits Later
 
 import numpy as np
-from scipy.linalg import inv, cholesky, triu
+from numpy.linalg import inv, cholesky
+from numpy import triu
 import os,sys,inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 sys.path.insert(0, currentdir + "/Exceptions")
@@ -11,8 +12,6 @@ from ToeplitzFactorizorExceptions import *
 
 from mpi4py import MPI
 
-
-from scipy import linalg
 
 from GeneratorBlocks import Blocks
 from GeneratorBlock import Block
@@ -45,10 +44,10 @@ class ToeplitzFactorizor:
                         kCheckpoint = k 
                         if self.rank == 0: print "Using Checkpoint #{0}".format(k)
                         break
+            kCheckpoint = 0
         else:
             os.makedirs("processedData/{0}/checkpoint/".format(folder))
         self.kCheckpoint = kCheckpoint
-        
         if not os.path.exists("results"):
             os.makedirs("results")
         if not os.path.exists("results/{0}".format(folder)):
@@ -58,7 +57,7 @@ class ToeplitzFactorizor:
     	folder = self.folder
     	b = Block(rank)
     	k = self.kCheckpoint
-    	
+    	print k
     	if k!= 0:
     		A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, rank))
     		A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, rank))
@@ -130,7 +129,8 @@ class ToeplitzFactorizor:
         
         ##The root rank will compute the cholesky decomposition
         if self.blocks.hasRank(0) :
-            c = cholesky(self.blocks.getBlock(0).getT(), lower=False)
+            c = cholesky(self.blocks.getBlock(0).getT())
+            c = np.conj(c.T)
             cinv = inv(c)
         cinv = self.comm.bcast(cinv, root=0)
         for b in self.blocks:

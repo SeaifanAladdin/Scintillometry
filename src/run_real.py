@@ -1,9 +1,7 @@
 import os,sys
 from mpi4py import MPI
 import numpy as np
-import matplotlib.pyplot as plt
 from Factorize_parrallel import ToeplitzFactorizor
-from scipy.linalg import cholesky
 
 comm = MPI.COMM_WORLD
 size  = comm.Get_size()
@@ -25,6 +23,8 @@ else:
 	p = int(sys.argv[8])
 	pad = sys.argv[9] == "1" or sys.argv[9] == "True"
 	
+	if not os.path.exists("processedData/"):	
+		os.makedirs("processedData/")
 	folder = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}".format(n, m*4, offsetn, offsetm)
 	filename = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}_toep".format(n,m*4, offsetn, offsetm) 
 	file = filename + ".npy".format(n, m*4)
@@ -53,8 +53,6 @@ else:
 					L[4*m*j: 4*m*(j + 1), 4*m*i:4*m*(i + 1)] = Ltemp
 
 	    		
-		plt.imshow(np.abs(L))
-		plt.colorbar()
 		x = np.zeros((4*n*m, 1), complex)
 		for i in range(n):
 			x[4*i*m:(i+1)*4*m, :] = -np.conj(L[4*n*m*pad:,4*n*m*pad:]).T[i*4*m:(i+1)*4*m, 4*m*n- 2*m - 1:4*m*n - 2*m]
@@ -63,4 +61,3 @@ else:
 
 		resultpath_uc='results/'+filename+'_uc.npy'
 		np.save(resultpath_uc, x) ## Might be conjugate
-		plt.show()
