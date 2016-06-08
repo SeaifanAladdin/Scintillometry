@@ -44,7 +44,6 @@ class ToeplitzFactorizor:
                         kCheckpoint = k 
                         if self.rank == 0: print "Using Checkpoint #{0}".format(k)
                         break
-            kCheckpoint = 0
         else:
             os.makedirs("processedData/{0}/checkpoint/".format(folder))
         self.kCheckpoint = kCheckpoint
