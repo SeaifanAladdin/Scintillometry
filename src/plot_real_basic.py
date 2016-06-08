@@ -15,9 +15,9 @@ if len(sys.argv) < 2:
     print "Usage: %s filename(withoutextention)" % (sys.argv[0])
     sys.exit(1)
 filename=sys.argv[1]
-filename_toep='processedData/'+filename+'_toep.npy'
-filename_dynamic='processedData/'+filename+'_dynamic.npy'
-resultpath_uc='results/'+filename+'_uc.npy'
+filename_toep='processedData/'+filename+"/"+filename+'_toep.npy'
+#filename_dynamic='processedData/'+filename+'_dynamic.npy'
+resultpath_uc='results/'+filename+'_toep_uc.npy'
 
 matchObj = re.search('meff_(\d*)',filename) 
 if matchObj:    
@@ -51,8 +51,8 @@ binb=1
 #b_num=corr.shape[1]
 #a_vv = np.copy(corr.reshape(a_num//bina, bina, b_num//binb, binb))
 #corr=np.mean(np.mean(a_vv,axis=3),axis=1)
-dynamic=np.load(filename_dynamic).T
-dynamic=np.abs(dynamic)[:dynamic.shape[0]/2,:dynamic.shape[1]/2]
+#dynamic=np.load(filename_dynamic).T
+#dynamic=np.abs(dynamic)[:dynamic.shape[0]/2,:dynamic.shape[1]/2]
 
 
 
@@ -121,19 +121,19 @@ plt.xlabel(r"Doppler Frequency $f_D$ ")
 #binb=1
 #a_num=dynamic.shape[0]
 #b_num=dynamic.shape[1]
-plt.figure(2)
+#plt.figure(2)
 #a_vv = np.copy(dynamic.reshape(a_num//bina, bina, b_num//binb, binb))
 #dynamic=np.mean(np.mean(a_vv,axis=3),axis=1)
 #fig.add_subplot(gs[0:2, :4])
-x = np.linspace(0, 8, dynamic.shape[1], endpoint=True)
-y = np.linspace(0, 985, dynamic.shape[0], endpoint=True)
-x_ds, y_ds = np.meshgrid( x,y)
-im = plt.pcolormesh(x_ds, y_ds, dynamic,  cmap=cm.Greys)
+#x = np.linspace(0, 8, dynamic.shape[1], endpoint=True)
+#y = np.linspace(0, 985, dynamic.shape[0], endpoint=True)
+#x_ds, y_ds = np.meshgrid( x,y)
+#im = plt.pcolormesh(x_ds, y_ds, dynamic,  cmap=cm.Greys)
 #plt.ylim(0, 985)
-plt.colorbar()
-plt.title("Dynamic Spectrum I(f,t)")
-plt.ylabel("Time ")
-plt.xlabel("Frequency ")
+#plt.colorbar()
+#plt.title("Dynamic Spectrum I(f,t)")
+#plt.ylabel("Time ")
+#plt.xlabel("Frequency ")
 #fig.add_subplot(gs[2:4, 2:4])
 #plt.imshow(np.log10(np.abs(corr)), aspect='auto', cmap=cm.Greys,interpolation='nearest', vmin=-2,origin='lower')
 #plt.colorbar()

@@ -44,7 +44,8 @@ else:
 				if os.path.isfile(path):
 					Ltemp = np.load(path)
 					L[4*m*j: 4*m*(j + 1), 4*m*i:4*m*(i + 1)] = Ltemp
-
+		np.save('results/'+filename+'.npy',L)
+        
 	    		
 		x = np.zeros((4*n*m, 1), complex)
 		for i in range(n):
