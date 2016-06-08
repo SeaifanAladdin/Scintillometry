@@ -12,8 +12,8 @@ import mmap
 
 mm=mmap.mmap(-1,256,mmap.MAP_PRIVATE)
 np.set_printoptions(precision=2, suppress=True, linewidth=5000)
-if len(sys.argv) < 9:
-    print "Usage: %s filename num_rows num_columns offsetn offsetm sizen sizem np" % (sys.argv[0])
+if len(sys.argv) < 8:
+    print "Usage: %s filename num_rows num_columns offsetn offsetm sizen sizem" % (sys.argv[0])
     sys.exit(1)
 
 num_rows=int(sys.argv[2])
@@ -22,7 +22,7 @@ offsetn=int(sys.argv[4])
 offsetm=int(sys.argv[5])
 sizen=int(sys.argv[6])
 sizem=int(sys.argv[7])
-nump=int(sys.argv[8])
+nump=sizen
 
 if offsetn>num_rows or offsetm>num_columns or offsetn+sizen>num_rows or offsetm+sizem>num_columns:
 	print "Error sizes or offsets don't match"
