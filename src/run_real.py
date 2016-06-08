@@ -9,29 +9,23 @@ rank = comm.Get_rank()
 
 FILE = "gb057_1.input_baseline258_freq_03_pol_all.rebint.1.rebined"
 
-if len(sys.argv) != 10:
+if len(sys.argv) != 8:
 	if rank==0:
-		print "Please pass in the following arguments: method n m p pad"
+		print "Please pass in the following arguments: method offsetn offsetm n m p pad"
 else:
-	num_rows = int(sys.argv[2])
-	num_columns=int(sys.argv[3])
-	offsetn=int(sys.argv[4])
-	offsetm=int(sys.argv[5])
-	n = int(sys.argv[6])
-	m = int(sys.argv[7])
+	offsetn=int(sys.argv[2])
+	offsetm=int(sys.argv[3])
+	n = int(sys.argv[4])
+	m = int(sys.argv[5])
 	method = sys.argv[1]
-	p = int(sys.argv[8])
-	pad = sys.argv[9] == "1" or sys.argv[9] == "True"
+	p = int(sys.argv[6])
+	pad = sys.argv[7] == "1" or sys.argv[7] == "True"
 	
 	if not os.path.exists("processedData/"):	
 		os.makedirs("processedData/")
 	folder = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}".format(n, m*4, offsetn, offsetm)
 	filename = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}_toep".format(n,m*4, offsetn, offsetm) 
 	file = filename + ".npy".format(n, m*4)
-	cmd = "python extract_realData2.py {} {} {} {} {} {} {} {}".format(FILE, num_rows, num_columns, offsetn, offsetm, n,m, n)
-	os.system(cmd)
-
-
 	T = np.zeros((2*m, 2*m), complex)
 	toeplitz=None
 
@@ -39,7 +33,6 @@ else:
 	for i in range(0, n//size):
 
 		c.addBlock(rank + i*size)
-		
 	c.fact(method, p)
 	
 	L = np.zeros((4*m*n*(1 + pad),4*m*n*(1 + pad)), complex)
