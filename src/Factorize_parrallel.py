@@ -57,7 +57,6 @@ class ToeplitzFactorizor:
     	folder = self.folder
     	b = Block(rank)
     	k = self.kCheckpoint
-    	print k
     	if k!= 0:
     		A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, rank))
     		A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, rank))
@@ -73,7 +72,7 @@ class ToeplitzFactorizor:
     	else:						
     		T = np.load("processedData/{0}/{1}.npy".format(folder,rank))
     		b.setT(T)
-       	self.blocks.addBlock(b)       
+       	self.blocks.addBlock(b)     
        	return 
 
     def fact(self, method, p):
