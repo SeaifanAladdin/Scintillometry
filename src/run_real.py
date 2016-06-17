@@ -30,8 +30,7 @@ else:
 	toeplitz=None
 
 	c = ToeplitzFactorizor(folder, n,4*m, pad)
-	for i in range(0, n//size):
-
+	for i in range(0, n*(1 + pad)//size):
 		c.addBlock(rank + i*size)
 	c.fact(method, p)
 	

@@ -53,25 +53,23 @@ class ToeplitzFactorizor:
             os.makedirs("results/{0}".format(folder))   
         
     def addBlock(self, rank):
-    	folder = self.folder
-    	b = Block(rank)
-    	k = self.kCheckpoint
-    	if k!= 0:
-    		A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, rank))
-    		A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, rank))
-    		b.setA1(A1)
-    		b.setA2(A2)
-    		if self.pad:
-    		    A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, self.n + rank))
-    		    A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, self.n + rank))
-    		    b2 = Block(rank + self.n)
-                b2.setA1(A1)
-                b2.setA2(A2)
-                self.blocks.addBlock(b2)
-    	else:						
-    		T = np.load("processedData/{0}/{1}.npy".format(folder,rank))
-    		b.setT(T)
-       	self.blocks.addBlock(b)     
+        folder = self.folder
+        b = Block(rank)
+        k = self.kCheckpoint
+        if k!= 0:
+            A1 = np.load("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, rank))
+            A2 = np.load("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, rank))
+            b.setA1(A1)
+            b.setA2(A2)
+        else:
+            if rank >= self.n:
+                m = self.m
+                b.createA(np.zeros((m,m), complex))
+                
+            else:
+                T = np.load("processedData/{0}/{1}.npy".format(folder,rank))
+                b.setT(T)
+        self.blocks.addBlock(b)     
        	return 
 
     def fact(self, method, p):
@@ -132,12 +130,9 @@ class ToeplitzFactorizor:
             cinv = inv(c)
         cinv = self.comm.bcast(cinv, root=0)
         for b in self.blocks:
-        	b.createA(b.getT().dot(cinv))
-        if pad:
-        	for b in self.blocks:
-        		b2 = Block(b.rank + n)
-        		b2.createA(np.zeros((m,m), complex))
-        		self.blocks.addBlock(b2)
+            if b.rank < self.n:
+                b.createA(b.getT().dot(cinv))
+            
         		
         ##We are done with T. We shouldn't ever have a reason to use it again
         for b in self.blocks:
