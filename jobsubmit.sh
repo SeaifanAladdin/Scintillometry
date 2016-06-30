@@ -1,41 +1,36 @@
 #!/bin/sh
-# @ job_name           = FOLD_JB
+# @ job_name           = 1024x50Padded
 # @ job_type           = bluegene
-# @ comment            = "by-channel JB"
+# @ comment            = "n=1024, m=50, zero-padded"
 # @ error              = $(job_name).$(Host).$(jobid).err
 # @ output             = $(job_name).$(Host).$(jobid).out
-# @ bg_size            = 64
-# @ wall_clock_limit   = 24:00:00
+# @ bg_size            = 128
+# @ wall_clock_limit   = 30:00
 # @ bg_connectivity    = Torus
-# @ queue
-# Launch all BGQ jobs using runjob   
-#PBS -l nodes=10:ppn=8,walltime=0:40:00
-#PBS -N np80_nodes4_ppn8
+# @ queue 
 
-# load modules (must match modules used for compilation)
+source /scratch/s/scinet/nolta/venv-numpy/setup
+
+NP=2048
+OMP=4 ## Each core has 4 threads. Since RPN = 16, OMP = 4?
+RPN=16
+
 module purge
-#module unload mpich2/xl python
-#module load   python/2.7.3         binutils/2.23      bgqgcc/4.8.1       mpich2/gcc-4.8.1 fftw/3.3.3-gcc4.8.1 
-#module load vacpp
-module load bgqgcc/4.8.1 vacpp
-module load mpich2/gcc-4.8.1 lapack 
 
 module load python/2.7.3
 module load xlf/14.1 essl/5.1
 
-#module load hdf5/189-v18-mpich2-xlc
-#module load bgqgcc/4.8.1 mpich2/gcc-4.8.1 python/2.7.3 
+cd /home/p/pen/seaifan/Scintillometry/src
 
-# DIRECTORY TO RUN - $PBS_O_WORKDIR is directory job was submitted from
-cd ./src
+mkdir results
 
-# PIN THE MPI DOMAINS ACCORDING TO OMP
-export I_MPI_PIN_DOMAIN=omp
+echo "----------------------"
+echo "STARTING in directory $PWD"
+date
+echo "np ${NP}, rpn ${RPN}, omp ${OMP}"
 
-
-#python interface.py
-runjob --np 1 --ranks-per-node=1 --envs HOME=$HOME LD_LIBRARY_PATH=$LD_LIBRARY_PATH PYTHONPATH=/scinet/bgq/tools/Python/python2.7.3-20131205/lib/python2.7/site-packages/ : /scinet/bgq/tools/Python/python2.7.3-20131205/bin/python2.7 interface.py
+OMP_NUM_THREADS=${OMP}
+time runjob --np ${NP} --ranks-per-node=${RPN} --env-all : `which python` run_real.py yty2 0 148 1024 50 100 1
 
 echo "ENDED"
 date
-
