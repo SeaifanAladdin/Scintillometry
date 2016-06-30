@@ -29,7 +29,7 @@ echo "STARTING in directory $PWD"
 date
 echo "np ${NP}, rpn ${RPN}, omp ${OMP}"
 
-time OMP_NUM_THREADS=${OMP} runjob --np ${NP} --ranks-per-node=${RPN} --env-all : `which python` run_real.py yty2 0 148 1024 50 100 1
+time OMP_NUM_THREADS=${OMP} runjob --np ${NP} --ranks-per-node=${RPN} --env-all : `which python` run_real.py yty2 0 140 1024 50 50 1
 
 echo "ENDED"
 date
