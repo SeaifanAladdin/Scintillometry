@@ -100,8 +100,8 @@ class ToeplitzFactorizor:
                 
             else:
                 self.__block_reduc(s1, e1, s2, e2, m, p, method)
-                
-            print "Saving Checkpoint #{0}".format(k)   
+            if self.rank==0:    
+                print "Saving Checkpoint #{0}".format(k)   
             for b in self.blocks:
                 ##Creating Checkpoint
                 if not os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
