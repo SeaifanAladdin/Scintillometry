@@ -100,6 +100,7 @@ class ToeplitzFactorizor:
                 
             else:
                 self.__block_reduc(s1, e1, s2, e2, m, p, method)
+                
             print "Saving Checkpoint #{0}".format(k)   
             for b in self.blocks:
                 ##Creating Checkpoint
@@ -162,7 +163,7 @@ class ToeplitzFactorizor:
 
 
         n = self.n
-        M = np.zeros((m*n,m), dtype=complex)
+       
         ch = 0
         for sb1 in range (0, m, p):
             for b in self.blocks:
@@ -193,10 +194,10 @@ class ToeplitzFactorizor:
                 S = self.__aggregate(S, XX2, beta, p, j, j1, j2, p_eff, method)
 
             self.__set_curr_gen(s2, n) ## Updates work
-            self.__block_update(M, XX2, sb1, eb1, u1, e1, s2,  sb2, eb2, u2, e2, S, method)
+            self.__block_update(XX2, sb1, eb1, u1, e1, s2,  sb2, eb2, u2, e2, S, method)
             #raise Exception()
         return
-    def __block_update(self,M, X2, sb1, eb1, u1, e1,s2, sb2, eb2, u2, e2, S, method):
+    def __block_update(self, X2, sb1, eb1, u1, e1,s2, sb2, eb2, u2, e2, S, method):
         def wy1():
             Y1, Y2 = S
             if p_eff == 0: return
