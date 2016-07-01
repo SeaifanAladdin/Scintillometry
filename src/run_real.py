@@ -33,7 +33,7 @@ else:
 	for i in range(0, n*(1 + pad)//size):
 		c.addBlock(rank + i*size)
 	c.fact(method, p)
-	
+	'''
 	L = np.zeros((4*m*n*(1 + pad),4*m*n*(1 + pad)), complex)
 	if rank == 0:
 		for i in range(n*(1 + pad)):
@@ -54,3 +54,4 @@ else:
 
 		resultpath_uc='results/'+filename+'_uc.npy'
 		np.save(resultpath_uc, x) ## Might be conjugate
+		'''
