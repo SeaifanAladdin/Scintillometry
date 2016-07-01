@@ -100,13 +100,14 @@ class ToeplitzFactorizor:
                 
             else:
                 self.__block_reduc(s1, e1, s2, e2, m, p, method)
-                
+            print "Saving Checkpoint #{0}".format(k)   
             for b in self.blocks:
                 ##Creating Checkpoint
                 if not os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
                     try:
                         os.makedirs("processedData/{0}/checkpoint/{1}/".format(folder, k))
                     except: pass
+                
                 A1 = np.save("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, b.rank), b.getA1())
                 A2 = np.save("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, b.rank), b.getA2())
                 ##Saving L
@@ -564,36 +565,4 @@ class ToeplitzFactorizor:
         X2 = self.comm.bcast(X2, root=s2%self.size) 
         return X2, beta
 
-if __name__=="__main__":
-    np.random.seed(20)
-    comm = MPI.COMM_WORLD
-    size  = comm.Get_size()
-    rank = comm.Get_rank()
-
-    
-    if len(sys.argv) != 4:
-        print "error"
-    else:
-        from func import createBlockedToeplitz, testFactorization
-        n = size
-        m = int(sys.argv[2])
-        method = sys.argv[1]
-        p = int(sys.argv[3])
-        T = None
-        if rank == 0:
-            T = createBlockedToeplitz(n, m)
-        T1 = comm.bcast(T, root=0)[rank*m:(rank+1)*m, :m]
-        c = ToeplitzFactorizor(T1)
-        L = c.fact(method, p)
-        if rank == 0:
-            print testFactorization(T, L)
-            import matplotlib.pyplot as plt
-            plt.imshow(np.abs(T - L.dot(np.conj(L.T))))
-            plt.colorbar()
-            plt.show()
-        if rank == 0 and not testFactorization(T, L):
-            print np.around(L,1)
-            print
-            print np.around(cholesky(T, lower=True),1)
-            print "L error"
 	
