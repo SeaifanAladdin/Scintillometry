@@ -5,7 +5,7 @@
 # @ error              = $(job_name).$(Host).$(jobid).err
 # @ output             = $(job_name).$(Host).$(jobid).out
 # @ bg_size            = 128
-# @ wall_clock_limit   = 30:00
+# @ wall_clock_limit   = 24:00:00
 # @ bg_connectivity    = Torus
 # @ queue 
 
@@ -20,7 +20,7 @@ module purge
 module load python/2.7.3
 module load xlf/14.1 essl/5.1
 
-cd /home/p/pen/seaifan/Scintillometry/src
+cd /scratch/p/pen/seaifan/Scintillometry/src
 
 mkdir results
 
