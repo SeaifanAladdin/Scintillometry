@@ -16,6 +16,12 @@ from mpi4py import MPI
 from GeneratorBlocks import Blocks
 from GeneratorBlock import Block
 
+from time import time
+
+MAXTIME = int(60*60*23.5) #23.5 hours in seconds
+timePerLoop = []
+startTime = time()
+
 
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
@@ -45,12 +51,15 @@ class ToeplitzFactorizor:
                         if self.rank == 0: print "Using Checkpoint #{0}".format(k)
                         break
         else:
-            os.makedirs("processedData/{0}/checkpoint/".format(folder))
+            if self.rank == 0:
+                os.makedirs("processedData/{0}/checkpoint/".format(folder))
         self.kCheckpoint = kCheckpoint
         if not os.path.exists("results"):
-            os.makedirs("results")
+            if self.rank == 0:
+                os.makedirs("results")
         if not os.path.exists("results/{0}".format(folder)):
-            os.makedirs("results/{0}".format(folder))   
+            if self.rank == 0:
+                os.makedirs("results/{0}".format(folder))   
         
     def addBlock(self, rank):
         folder = self.folder
@@ -90,7 +99,8 @@ class ToeplitzFactorizor:
         
 
             for b in self.blocks:
-                np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
+                if b.rank == n*(1 + pad) - 1:
+                    np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
         
         for k in range(self.kCheckpoint + 1,n*(1 + pad)):
             ##Build generator at step k [A1(:e1, :) A2(s2:e2, :)]
@@ -100,21 +110,38 @@ class ToeplitzFactorizor:
                 
             else:
                 self.__block_reduc(s1, e1, s2, e2, m, p, method)
-            if self.rank==0:    
-                print "Saving Checkpoint #{0}".format(k)   
-            for b in self.blocks:
-                ##Creating Checkpoint
-                if not os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
-                    try:
-                        os.makedirs("processedData/{0}/checkpoint/{1}/".format(folder, k))
-                    except: pass
                 
-                A1 = np.save("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, b.rank), b.getA1())
-                A2 = np.save("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, b.rank), b.getA2())
-                ##Saving L
-                if b.rank <=e1:
-                	np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
-
+            ##Save results immediately if we reached the end of the loop
+            
+            for b in self.blocks:
+                if b.rank <=e1 and b.rank + k == n*(1 + pad) - 1:
+                    np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
+                
+            ##CheckPoint
+            saveCheckpoint = False
+            if self.rank==0:
+                timePerLoop.append(time() - sum(timePerLoop) - startTime)
+                
+                elapsedTime = time() - startTime
+                if elapsedTime + max(timePerLoop) >= MAXTIME: ##Max instead of np.mean, just to be safe
+                    print "Saving Checkpoint #{0}".format(k)  
+                    if not os.path.exists("processedData/{0}/checkpoint/{1}/".format(folder, k)):
+                        try:
+                            os.makedirs("processedData/{0}/checkpoint/{1}/".format(folder, k))
+                        except: pass
+                    saveCheckpoint = True
+                 
+                    
+                
+            saveCheckpoint = self.comm.bcast(saveCheckpoint, root=0)
+            if saveCheckpoint:
+                for b in self.blocks:
+                    ##Creating Checkpoint
+                    A1 = np.save("processedData/{0}/checkpoint/{1}/{2}A1.npy".format(folder, k, b.rank), b.getA1())
+                    A2 = np.save("processedData/{0}/checkpoint/{1}/{2}A2.npy".format(folder, k, b.rank), b.getA2())
+                exit()
+                    
+            
 
     ##Private Methods
     def __setup_gen(self):
