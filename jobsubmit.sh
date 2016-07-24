@@ -1,10 +1,10 @@
 #!/bin/sh
-# @ job_name           = 1024x50Padded
+# @ job_name           = 2048x50Padded
 # @ job_type           = bluegene
-# @ comment            = "n=1024, m=50, zero-padded"
+# @ comment            = "n=2048, m=50, zero-padded"
 # @ error              = $(job_name).$(Host).$(jobid).err
 # @ output             = $(job_name).$(Host).$(jobid).out
-# @ bg_size            = 128
+# @ bg_size            = 256
 # @ wall_clock_limit   = 24:00:00
 # @ bg_connectivity    = Torus
 # @ queue 
@@ -12,8 +12,8 @@
 source /scratch/s/scinet/nolta/venv-numpy/setup
 
 NP=2048
-OMP=4 ## Each core has 4 threads. Since RPN = 16, OMP = 4?
-RPN=16
+OMP=8 ## Each core has 4 threads. Since RPN = 16, OMP = 4?
+RPN=8
 
 module purge
 
@@ -22,14 +22,12 @@ module load xlf/14.1 essl/5.1
 
 cd /scratch/p/pen/seaifan/Scintillometry/src
 
-mkdir results
-
 echo "----------------------"
 echo "STARTING in directory $PWD"
 date
 echo "np ${NP}, rpn ${RPN}, omp ${OMP}"
 
-time OMP_NUM_THREADS=${OMP} runjob --np ${NP} --ranks-per-node=${RPN} --env-all : `which python` run_real.py yty2 0 140 1024 50 50 1
+time OMP_NUM_THREADS=${OMP} runjob --np ${NP} --ranks-per-node=${RPN} --env-all : `which python` run_real.py yty2 0 140 2048 50 50 1
 
 echo "ENDED"
 date
