@@ -60,6 +60,15 @@ class ToeplitzFactorizor:
         if not os.path.exists("results/{0}".format(folder)):
             if self.rank == 0:
                 os.makedirs("results/{0}".format(folder))   
+
+        if self.rank==0:
+            if not os.path.exists("results/{0}".format(folder + "_uc.npy")):
+                uc = np.zeros((m*n,1), dtype=complex)
+                np.save("results/{0}".format(folder + "_uc.npy"), uc)
+        ## So that the creation of files and directories are complete before the rest of the nodes continue        
+        initDone=False
+        initDone = self.comm.bcast(initDone, root=0)
+        
         
     def addBlock(self, rank):
         folder = self.folder
@@ -78,6 +87,7 @@ class ToeplitzFactorizor:
             else:
                 T = np.load("processedData/{0}/{1}.npy".format(folder,rank))
                 b.setT(T)
+        b.setName("results/{0}_uc.npy".format(folder))
         self.blocks.addBlock(b)     
        	return 
 
@@ -100,7 +110,8 @@ class ToeplitzFactorizor:
 
             for b in self.blocks:
                 if not pad and b.rank == n*(1 + pad) - 1:
-                    np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
+                    b.updateuc(b.rank)
+                    #np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
         
         for k in range(self.kCheckpoint + 1,n*(1 + pad)):
             self.k = k
@@ -119,7 +130,8 @@ class ToeplitzFactorizor:
             
             for b in self.blocks:
                 if b.rank <=e1 and b.rank + k == n*(1 + pad) - 1:
-                    np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
+                    b.updateuc(k%self.n)
+                    #np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
                 
             ##CheckPoint
             saveCheckpoint = False
