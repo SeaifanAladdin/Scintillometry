@@ -4,16 +4,16 @@
 # @ comment            = "n=2048, m=50, zero-padded"
 # @ error              = $(job_name).$(Host).$(jobid).err
 # @ output             = $(job_name).$(Host).$(jobid).out
-# @ bg_size            = 256
+# @ bg_size            = 1024
 # @ wall_clock_limit   = 24:00:00
 # @ bg_connectivity    = Torus
 # @ queue 
 
 source /scratch/s/scinet/nolta/venv-numpy/setup
 
-NP=2048
-OMP=8 ## Each core has 4 threads. Since RPN = 16, OMP = 4?
-RPN=8
+NP=4096
+OMP=16 ## Each core has 4 threads. Since RPN = 16, OMP = 4?
+RPN=4
 
 module purge
 
