@@ -1,59 +1,128 @@
 # Scintillometry
 
 ##Synopsis
-The purpose of this project is to decompose a toeplitz matrix using Schur's algoritm. Because this project will run on SciNet, a supercomputer, the program will need to have multi-threading and multi-core capabilities. 
+The purpose of this project is to decompose a toeplitz matrix. Because this project will run on SciNet, a supercomputer, the program will need to have multi-threading and multi-core capabilities. 
 
 ##Example
-```
-$ python src/interface.py 
-Choose the size of your block:
-2
-Choose the number of blocks:
-2
-Your Toeplit Matrix is: 
-[[ 34.69+0.j   5.00-2.j  19.25+0.j   1.00-9.j]
- [  5.00+2.j  34.69+0.j   1.00+9.j  19.25+0.j]
- [ 19.25-0.j   1.00-9.j  34.69+0.j   5.00-2.j]
- [  1.00+9.j  19.25-0.j   5.00+2.j  34.69+0.j]]
 
-Choose a method among: seq wy1 wy2 yty1 yty2
-wy2
-Choose your p-factor (Not neccesary for seq):
-1
-The cholesky decomposition of the generated Toeplitz Matrix:
-[[ 5.89+0.j    0.00+0.j    0.00+0.j    0.00+0.j  ]
- [ 0.85+0.34j  5.82+0.j    0.00+0.j    0.00+0.j  ]
- [ 3.27+0.j   -0.31-1.36j -4.70-0.j    0.00+0.j  ]
- [ 0.17+1.53j  3.20-0.21j -1.09+1.57j -4.29-0.j  ]]
-```
-##Motivation
-When radio waves from puslars passes through the ISM, Interstellar Medium, a scintillating speckle pattern is created. To understand the properties of the ISM, and to do further research on pulsars, we require the phase and magnitude of the observed scintillation pattern. The purpose of this project is to obtain both the phase and magnitude by being able to factorize a toeplitz matrix using Schur's algorithm. 
+###Extracting Data from your binned file
 
-##Tests
-In the src/Tests folder are the unittest code which tests the software. The python file ToeplitzFactorizorTest.py contains 30 tests, which includes testing different methods, sizes, and block sizes.
-```
-$python src/Test/ToeplitzFactorizorTest.py 
-..............................
-----------------------------------------------------------------------
-Ran 30 tests in 0.039s
+To extract your binned data, move to the src folder and use extract_realData2.py
 
-OK
+The format is
+```
+$ python extract_realData2.py binnedDataFile numofrows numofcolms offsetn offsetm n m
+```
+where n is the number of blocks and m is the size of each block.
+
+So for example. if I wanted numofrows= 2048, numofcols=330, offsetn= 0, offsetm = 140, n=4, m=8, I would call
+```
+python extract_realData2.py gb057_1.input_baseline258_freq_03_pol_all.rebint.1.rebined 2048 330 0 140 4 8
+```
+This will create a folder at ./processedData/gate0_numblock_4_meff_32_offsetn_0_offsetm_140
+
+The name of the folder it's create is usually
+
+gate0_numblock_(n)_meff_(mx4)_offsetn_(offsetn)_offsetm_(offsetm)
+
+Inside this folder, there will be a gate0_numblock_(n)_meff_(mx4)_offsetn_(offsetn)_offsetm_(offsetm)_toep.npy file
+
+There will also be n npy files. They will each represent a block of the toepletz matrix. The name of the file represent which block they represent. (so 0.npy is the first block of the toepletz matrix with size 4mx4m)
+
+Please note that even though *m* increases by a factor of 4, arguments will still take the *m* you specefied.
+
+Finally, there is a checkpoint folder which I'll discuss later on.
+
+
+###Applying the toepletz factorizor
+
+### Locally
+
+Now that we have our extracted the data we want, it's time to apply the toepletz factorizor.
+
+First, let's do this on your local computer. Here, I'm using openmpi
 
 ```
-
-If you would like to make your own tests, use the function testFactorization from func.py. This function takes in your toeplitz matrix **T** and the computed factorized matrix **L** and confirms whether **T** = **L** **L^t** where t is the conjugate transpose.
+$ module load mpi
+$ module list
+Currently Loaded Modulefiles:
+  1) mpi/openmpi-x86_64
 ```
-$ cd src/
-$ python
-Python 2.7.10 (default, Sep  8 2015, 17:20:17) 
-[GCC 5.1.1 20150618 (Red Hat 5.1.1-4)] on linux2
-Type "help", "copyright", "credits" or "license" for more information.
->>> from func import *
->>> from ToeplitzFactorizor import *
->>> T = createBlockedToeplitz(20, 4)
->>> c = ToeplitzFactorizor(T, 20)
->>> L = c.fact("yty2", 2)
->>> print "Factorization works: " + str(testFactorization(T, L))
-Factorization works: True
+Then at ./src, we want to use the python file run_real.py
+```
+mpirun --np num_of_processors python run_real.py method_name offsetn offsetm n m p pad
+```
+Note that due to scalability problems, num_of_processors must equal n. So this can be rewritten as 
+```
+mpirun --np n python run_real.py method_name offsetn offsetm n m p pad
+```
+method_name can be any of the following 5 methods: seq, wy1, wy2, yty1, yty2
+
+offsetn and offsetm must equal what you had when using extract_realdata2.py
+
+n and m are the number of blocks and size of each block respectively. They are also the same to what you used for extract_realdata2.py
+
+p is the p parameter.
+
+pad is whether there is padding involved or not. it can be 0 for false, or 1 for true.
+
+So using the previous example, I would call
+
+```
+$ time mpirun --np 4 python run_real.py yty2 0 140 4 8 2 1
+Loop 1
+Loop 2
+Loop 3
+Loop 4
+Loop 5
+Loop 6
+Loop 7
+
+real	0m0.866s
+user	0m1.149s
+sys	0m1.040s
+```
+
+It prints the loop to let you know how far it progressed in the factoization. 
+
+I also used the time command to time how long it takes to execute this.
+
+What this returns is a file at ./results, with the name
+
+gate0_numblock_(n)_meff_(mx4)_offsetn_(offsetn)_offsetm_(offsetm)_uc.npy
+
+So in our case, we have a file 
+
+gate0_numblock_4_meff_32_offsetn_0_offsetm_140_uc.npy
+
+
+###ON SciNet
+
+To be done later
+
+
+
+###Plotting our results
+
+We can now plot our results using code Niliou has written
+
+For example, we could use 
+
+```
+$ python plot_real_basic.py resultName
+```
+
+or
+
+```
+$ python plot_real.py resultName
+```
+
+
+So in our example, we could plot using
+
+```
+$ python plot_real_basic.py gate0_numblock_4_meff_32_offsetn_0_offsetm_140
+$ python plot_real.py gate0_numblock_4_meff_32_offsetn_0_offsetm_140 
 ```
 
