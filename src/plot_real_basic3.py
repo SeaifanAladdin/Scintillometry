@@ -18,15 +18,13 @@ filename=sys.argv[1]
 filename_toep='processedData/'+filename+"/"+filename+'_toep.npy'
 #filename_dynamic='processedData/'+filename+'_dynamic.npy'
 resultpath_uc='results/'+filename+'_uc.npy'
-#resultpath_uc="results/Nilou.npy"
-##resultpath_uc="results/2048x200_yty2_uc.npy"
+
 matchObj = re.search('meff_(\d*)',filename) 
 if matchObj:    
 	meff_f=matchObj.group(1)
 else:
 	sys.exit(1)
 uc=np.load(resultpath_uc)
-
 #uc=uc.T
 print uc.shape,int(meff_f)
 lr=np.zeros_like(uc)
@@ -75,8 +73,8 @@ a_num=A.shape[0]
 b_num=A.shape[1]
 a_vv = np.copy(A.reshape(a_num//bina, bina, b_num//binb, binb))
 A=np.mean(np.mean(a_vv,axis=3),axis=1)
-
 cj=np.append(cj[:,7*cj.shape[1]/8:cj.shape[1]], cj[:,:cj.shape[1]/8],axis=1)[:cj.shape[0]/4,:]
+
 #cg = np.log10(np.power(np.abs(cj[:cj.shape[0]/2,:]),2))
 #vmin = A.mean()-2.*A.std()
 #vmax = A.mean()+A.std()
@@ -93,7 +91,7 @@ A=np.where(A > 0, A, 0.0001)
 A=np.log10(np.power(A,2))
 print y_ds.shape,x_ds.shape,A.shape
 #plt.pcolormesh(x_ds,y_ds, A,  cmap=cm.Greys,vmin=-1,vmax=3)
-ax=plt.imshow(A, aspect='auto', cmap=cm.Greys, interpolation='nearest', vmin=-1, origin='lower')
+ax=plt.imshow(np.log10(np.power(A,2)), aspect='auto', cmap=cm.Greys, interpolation='nearest', vmin=-1, origin='lower')
 plt.colorbar()
 #plt.ylim(0, 128)
 #plt.xlim(-25.4,25.4)
@@ -109,11 +107,9 @@ b_num=cj.shape[1]
 a_vv = np.copy(cj.reshape(a_num//bina, bina, b_num//binb, binb))
 cj=np.mean(np.mean(a_vv,axis=3),axis=1)
 cj=np.abs(cj)
-cj=np.where(cj > 0, cj, 0.0001)
-cj=np.log10(cj)
-plt.imshow(cj, aspect='auto',cmap=cm.Greys, interpolation='nearest', vmin=2, origin='lower')
+cj=np.where(cj > 0, cj, 0.001)
 #plt.pcolormesh(x_ds,y_ds,np.log10(cj),  cmap=cm.Greys)
-#plt.imshow(cj, aspect='auto', cmap=cm.Greys, interpolation='nearest',origin='lower')
+plt.imshow(np.log10(np.power(np.abs(cj),1)), aspect='auto', cmap=cm.Greys, interpolation='nearest', origin='lower')
 plt.colorbar()
 #plt.ylim(0, 128)
 #plt.xlim(-25.4,25.4)
