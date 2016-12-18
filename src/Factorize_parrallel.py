@@ -26,7 +26,7 @@ startTime = time()
 SEQ, WY1, WY2, YTY1, YTY2 = "seq", "wy1", "wy2", "yty1", "yty2"
 class ToeplitzFactorizor:
     
-    def __init__(self, folder, n,m, pad):
+    def __init__(self, folder, n,m, pad, detailedSave = False):
         self.comm = MPI.COMM_WORLD
         size  = self.comm.Get_size()
         self.size = size
@@ -37,6 +37,7 @@ class ToeplitzFactorizor:
         self.folder = folder
         self.blocks = Blocks()
         
+        self.detailedSave = detailedSave
         self.numOfBlocks = n*(1 + pad)
         
         kCheckpoint = 0 #0 = no checkpoint
@@ -111,7 +112,9 @@ class ToeplitzFactorizor:
             for b in self.blocks:
                 if not pad and b.rank == n*(1 + pad) - 1:
                     b.updateuc(b.rank)
-                    #np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
+        if (self.detailedSave):
+            for b in self.blocks:        
+                np.save("results/{0}/L_{1}-{2}.npy".format(folder, 0, b.rank), b.getA1())
         
         for k in range(self.kCheckpoint + 1,n*(1 + pad)):
             self.k = k
@@ -131,7 +134,8 @@ class ToeplitzFactorizor:
             for b in self.blocks:
                 if b.rank <=e1 and b.rank + k == n*(1 + pad) - 1:
                     b.updateuc(k%self.n)
-                    #np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
+                if b.rank <= e1 and self.detailedSave:
+                    np.save("results/{0}/L_{1}-{2}.npy".format(folder, k, b.rank + k), b.getA1())
                 
             ##CheckPoint
             saveCheckpoint = False
