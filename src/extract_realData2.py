@@ -156,10 +156,10 @@ for rank in xrange(0,nump):
 	start = rank*size_node_temp
 	file_name=path+str(rank)+".npy"
 	np.save(file_name,np.conj(input_f[:,start:start+size_node].T))
-#output_file="processedData/gate0_numblock_%s_meff_%s_offsetn_%s_offsetm_%s.dat" %(str(sizen),str(meff_f),str(offsetn),str(offsetm))
-#output = np.memmap(output_file, dtype='complex', mode='w+', shape=(meff_f, sizen*meff_f),order='F')
-#output[:,:]=input_f[:meff_f,:]
-#del output
+output_file="processedData/gate0_numblock_%s_meff_%s_offsetn_%s_offsetm_%s.dat" %(str(sizen),str(meff_f),str(offsetn),str(offsetm))
+output = np.memmap(output_file, dtype='complex', mode='w+', shape=(meff_f, sizen*meff_f),order='F')
+output[:,:]=input_f[:meff_f,:]
+del output
 #print input_f[0:sizen*meff_f, sizem*meff_f:neff*meff_f]
 mm.close()
 if debug:
