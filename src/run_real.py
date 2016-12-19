@@ -28,11 +28,7 @@ else:
 	if not os.path.exists("processedData/"):	
 		os.makedirs("processedData/")
 	folder = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}".format(n, m*4, offsetn, offsetm)
-	filename = "gate0_numblock_{}_meff_{}_offsetn_{}_offsetm_{}_toep".format(n,m*4, offsetn, offsetm) 
-	file = filename + ".npy".format(n, m*4)
 	
-	toeplitz=None
-
 	c = ToeplitzFactorizor(folder, n,4*m, pad, detailedSave)
 	for i in range(0, n*(1 + pad)//size):
 		c.addBlock(rank + i*size)
